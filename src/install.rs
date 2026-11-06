@@ -329,7 +329,7 @@ pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> 
     for (want, path) in [(o.desktop, desk), (o.start_menu, menu)] {
         let Some(path) = path else { continue };
         if want {
-            if !sys::create_shortcut(&path, &app, "", "Contrôle RGB unifié") {
+            if !sys::create_shortcut(&path, &app, "", crate::langue::tr("Contrôle RGB unifié")) {
                 notes.push(format!("Raccourci non créé : {}", path.display()));
             }
         } else {
@@ -352,7 +352,7 @@ pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> 
     sys::reg_set_str(hk, k, "UninstallString", &m);
     sys::reg_set_str(hk, k, "ModifyPath", &m);
     sys::reg_set_str(hk, k, "QuietUninstallString", &format!("\"{}\" --uninstall --quiet", maint.display()));
-    sys::reg_set_str(hk, k, "Comments", "Contrôle RGB unifié et léger");
+    sys::reg_set_str(hk, k, "Comments", crate::langue::tr("Contrôle RGB unifié et léger"));
     sys::reg_set_dword(hk, k, "EstimatedSize", dir_size_kb(&o.dir));
     sys::reg_set_dword(hk, k, "NoRepair", 0);
     for (n, v) in [("Desktop", o.desktop), ("StartMenu", o.start_menu), ("Autostart", o.autostart), ("CloseToTray", o.close_to_tray)] {
@@ -386,9 +386,9 @@ pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> 
             .ok()
             .and_then(|s| s.code());
         if !crate::drivers::pawnio::installed() {
-            notes.push(format!(
-                "PawnIO n'a pas pu être installé automatiquement (code {}). Téléchargez-le sur pawnio.eu.",
-                code.map(|c| c.to_string()).unwrap_or("?".into())
+            notes.push(crate::langue::trf(
+                "PawnIO n'a pas pu être installé automatiquement (code {code}). Téléchargez-le sur pawnio.eu.",
+                &[("code", &code.map(|c| c.to_string()).unwrap_or("?".into()))],
             ));
         }
     }

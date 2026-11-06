@@ -5,6 +5,7 @@
 //! de désinstallation (uninstall.exe dans le dossier d'installation).
 
 use crate::install::{self, Options};
+use crate::langue::{tr, trd, trf};
 use crate::sys;
 use crate::ui::{bold, card, chip, glass, glow, label_dim, section, toggle, ACCENT, DIM, GREEN, TEXT};
 use eframe::egui::{self, pos2, vec2, Align, Color32, CornerRadius, Frame, Layout, Margin, RichText, TextureHandle, Ui};
@@ -30,7 +31,7 @@ fn require_admin(args: &[String], what: &str) -> bool {
         return true;
     }
     if elevate_self(args, false).is_none() {
-        sys::message("rJb", &format!("Les droits administrateur sont nécessaires pour {what}."), true);
+        sys::message("rJb", &trf("Les droits administrateur sont nécessaires pour {action}.", &[("action", tr(what))]), true);
     }
     false
 }
@@ -57,7 +58,7 @@ pub fn run_setup(args: &[String]) {
     if !require_admin(args, "installer rJb") {
         return;
     }
-    window("Installation de rJb", Mode::Setup);
+    window(tr("Installation de rJb"), Mode::Setup);
 }
 
 pub fn run_maintenance() {
@@ -68,7 +69,7 @@ pub fn run_maintenance() {
     if !require_admin(&args, "modifier ou désinstaller rJb") {
         return;
     }
-    window("Désinstaller ou réparer rJb", Mode::Maintenance);
+    window(tr("Désinstaller ou réparer rJb"), Mode::Maintenance);
 }
 
 /// `--uninstall [--all] [--quiet]` : désinstallation sans fenêtre.
@@ -183,7 +184,7 @@ fn window(title: &str, mode: Mode) {
 /// fond translucide. `main` = action principale (violet vif), sinon verre clair.
 fn button(ui: &mut Ui, text: &str, main: bool, enabled: bool) -> bool {
     let font = bold(if main { 15.5 } else { 14.5 });
-    let galley = ui.painter().layout_no_wrap(text.to_string(), font, Color32::WHITE);
+    let galley = ui.painter().layout_no_wrap(tr(text).to_string(), font, Color32::WHITE);
     let size = vec2((galley.size().x + 48.0).max(if main { 170.0 } else { 110.0 }), 42.0);
     let sense = if enabled { egui::Sense::click() } else { egui::Sense::hover() };
     let (rect, resp) = ui.allocate_exact_size(size, sense);
@@ -241,8 +242,8 @@ fn choice(ui: &mut Ui, selected: bool, title: &str, sub: &str) -> bool {
     if selected {
         p.circle_filled(c, 4.5, TEXT);
     }
-    p.text(pos2(rect.left() + 46.0, rect.top() + 11.0), egui::Align2::LEFT_TOP, title, bold(16.0), TEXT);
-    p.text(pos2(rect.left() + 46.0, rect.top() + 36.0), egui::Align2::LEFT_TOP, sub, egui::FontId::proportional(13.5), SOFT);
+    p.text(pos2(rect.left() + 46.0, rect.top() + 11.0), egui::Align2::LEFT_TOP, tr(title), bold(16.0), TEXT);
+    p.text(pos2(rect.left() + 46.0, rect.top() + 36.0), egui::Align2::LEFT_TOP, tr(sub), egui::FontId::proportional(13.5), SOFT);
     resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked()
 }
 
@@ -250,7 +251,7 @@ fn choice(ui: &mut Ui, selected: bool, title: &str, sub: &str) -> bool {
 const SOFT: Color32 = Color32::from_rgb(206, 213, 229);
 
 fn note(ui: &mut Ui, t: &str) {
-    ui.label(RichText::new(t).color(SOFT).size(13.5));
+    ui.label(RichText::new(trd(t)).color(SOFT).size(13.5));
 }
 
 impl SetupApp {
@@ -274,7 +275,7 @@ impl SetupApp {
                     (Mode::Setup, true) => "Mettre à jour rJb",
                     (Mode::Setup, false) => "Installer rJb",
                 };
-                ui.label(RichText::new(title).font(bold(26.0)));
+                ui.label(RichText::new(tr(title)).font(bold(26.0)));
                 label_dim(ui, &format!("Contrôle RGB unifié · version {}", env!("CARGO_PKG_VERSION")));
             });
         });
@@ -316,8 +317,8 @@ impl SetupApp {
                 if r.changed() {
                     self.dir_error = None;
                 }
-                if ui.button("Parcourir…").clicked() {
-                    if let Some(p) = sys::pick_folder("Choisissez où installer rJb") {
+                if ui.button(tr("Parcourir…")).clicked() {
+                    if let Some(p) = sys::pick_folder(tr("Choisissez où installer rJb")) {
                         let p = if p.file_name().is_some_and(|n| n.eq_ignore_ascii_case("rJb")) { p } else { p.join("rJb") };
                         self.dir_text = p.to_string_lossy().into_owned();
                         self.dir_error = None;
@@ -325,13 +326,16 @@ impl SetupApp {
                 }
             });
             if let Some(e) = &self.dir_error {
-                ui.label(RichText::new(e).color(Color32::from_rgb(255, 120, 120)).size(12.5));
+                ui.label(RichText::new(trd(e)).color(Color32::from_rgb(255, 120, 120)).size(12.5));
             } else if !install::secure_dir(&PathBuf::from(&self.dir_text)) {
                 note(ui, "⚠ Hors de Program Files, rJb démarrera avec Windows sans droits administrateur (RAM et carte mère après un clic).");
             }
             if self.existing {
-                let v = self.existing_version.as_deref().unwrap_or("précédente");
-                note(ui, &format!("La version {v} déjà installée sera remplacée. Vos profils et réglages sont conservés."));
+                let t = match self.existing_version.as_deref() {
+                    Some(v) => trf("La version {v} déjà installée sera remplacée.", &[("v", v)]),
+                    None => tr("La version déjà installée sera remplacée.").to_string(),
+                };
+                note(ui, &format!("{t} {}", tr("Vos profils et réglages sont conservés.")));
             }
         });
         ui.add_space(8.0);
@@ -353,7 +357,7 @@ impl SetupApp {
                 toggle(ui, &mut self.opts.autostart, "Lancer rJb au démarrage du PC");
             });
             ui.horizontal(|ui| {
-                ui.label("Bouton fermer :");
+                ui.label(tr("Bouton fermer :"));
                 if chip(ui, self.opts.close_to_tray, "Réduire dans la zone de notification").clicked() {
                     self.opts.close_to_tray = true;
                 }
@@ -368,7 +372,7 @@ impl SetupApp {
             ui.set_width(ui.available_width());
             section(ui, "RAM et carte mère");
             if self.pawn_installed {
-                ui.label(RichText::new("✔ Le pilote PawnIO est déjà installé.").color(GREEN));
+                ui.label(RichText::new(tr("✔ Le pilote PawnIO est déjà installé.")).color(GREEN));
             } else {
                 ui.horizontal(|ui| {
                     toggle(ui, &mut self.opts.pawnio, "Installer le pilote PawnIO (recommandé, via winget)");
@@ -446,7 +450,7 @@ impl SetupApp {
             ui.vertical_centered(|ui| {
                 ui.add(egui::Spinner::new().size(36.0).color(ACCENT));
                 ui.add_space(12.0);
-                ui.label(RichText::new(if step.is_empty() { "Préparation…" } else { &step }).size(15.0));
+                ui.label(RichText::new(trd(if step.is_empty() { "Préparation…" } else { &step })).size(15.0));
             });
             ui.add_space(30.0);
         });
@@ -469,7 +473,7 @@ impl SetupApp {
                         Task::UninstallApp => "rJb est désinstallé ✔",
                         Task::UninstallAll => "rJb et ses réglages sont supprimés ✔",
                     };
-                    ui.label(RichText::new(title).font(bold(20.0)).color(GREEN));
+                    ui.label(RichText::new(tr(title)).font(bold(20.0)).color(GREEN));
                     ui.add_space(6.0);
                     if task == Task::UninstallApp {
                         note(ui, "Vos réglages sont conservés : ils seront retrouvés si vous réinstallez rJb.");
@@ -482,7 +486,7 @@ impl SetupApp {
                         note(ui, "Pour l'épingler : clic droit sur rJb dans le menu Démarrer › Épingler à la barre des tâches.");
                     }
                     for n in notes {
-                        ui.label(RichText::new(format!("⚠ {n}")).color(Color32::from_rgb(255, 196, 90)).size(12.5));
+                        ui.label(RichText::new(format!("⚠ {}", trd(n))).color(Color32::from_rgb(255, 196, 90)).size(12.5));
                     }
                     if !uninstalling {
                         ui.add_space(6.0);
@@ -492,8 +496,8 @@ impl SetupApp {
                     }
                 }
                 Err(e) => {
-                    ui.label(RichText::new("L'opération n'a pas abouti").font(bold(20.0)).color(Color32::from_rgb(255, 120, 120)));
-                    ui.label(e);
+                    ui.label(RichText::new(tr("L'opération n'a pas abouti")).font(bold(20.0)).color(Color32::from_rgb(255, 120, 120)));
+                    ui.label(trd(e));
                 }
             }
         });

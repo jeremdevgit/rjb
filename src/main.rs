@@ -13,10 +13,12 @@ mod effects;
 mod engine;
 mod icon;
 mod install;
+mod langue;
 mod layout;
 mod model;
 mod setup;
 mod sys;
+mod textes;
 mod tray;
 mod ui;
 
@@ -134,6 +136,9 @@ fn main() {
         .ok()
         .and_then(|e| e.file_stem().map(|s| s.to_string_lossy().to_lowercase()))
         .unwrap_or_default();
+
+    // langue choisie dans les réglages, sinon celle de Windows (installateur compris)
+    langue::init(&config::Config::load().language);
 
     if let Some(i) = args.iter().position(|a| a == "--autostart") {
         let on = args.get(i + 1).is_some_and(|v| v == "on");

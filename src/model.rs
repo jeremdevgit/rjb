@@ -103,23 +103,23 @@ pub enum DeviceKind {
 impl DeviceKind {
     pub fn label(self) -> &'static str {
         match self {
-            DeviceKind::Keyboard => "Clavier",
-            DeviceKind::Mouse => "Souris",
-            DeviceKind::Mousemat => "Tapis",
-            DeviceKind::Headset => "Casque",
-            DeviceKind::HeadsetStand => "Support de casque",
-            DeviceKind::Speaker => "Enceinte",
-            DeviceKind::Microphone => "Micro",
-            DeviceKind::Motherboard => "Carte mère",
-            DeviceKind::Ram => "Mémoire",
-            DeviceKind::Gpu => "Carte graphique",
-            DeviceKind::Cooler => "Refroidissement",
-            DeviceKind::FanController => "Contrôleur de ventilateurs",
-            DeviceKind::LedStrip => "Bande LED",
-            DeviceKind::Case => "Boîtier",
-            DeviceKind::Gamepad => "Manette",
-            DeviceKind::Light => "Lampe",
-            DeviceKind::Other => "Appareil",
+            DeviceKind::Keyboard => crate::langue::tr("Clavier"),
+            DeviceKind::Mouse => crate::langue::tr("Souris"),
+            DeviceKind::Mousemat => crate::langue::tr("Tapis"),
+            DeviceKind::Headset => crate::langue::tr("Casque"),
+            DeviceKind::HeadsetStand => crate::langue::tr("Support de casque"),
+            DeviceKind::Speaker => crate::langue::tr("Enceinte"),
+            DeviceKind::Microphone => crate::langue::tr("Micro"),
+            DeviceKind::Motherboard => crate::langue::tr("Carte mère"),
+            DeviceKind::Ram => crate::langue::tr("Mémoire"),
+            DeviceKind::Gpu => crate::langue::tr("Carte graphique"),
+            DeviceKind::Cooler => crate::langue::tr("Refroidissement"),
+            DeviceKind::FanController => crate::langue::tr("Contrôleur de ventilateurs"),
+            DeviceKind::LedStrip => crate::langue::tr("Bande LED"),
+            DeviceKind::Case => crate::langue::tr("Boîtier"),
+            DeviceKind::Gamepad => crate::langue::tr("Manette"),
+            DeviceKind::Light => crate::langue::tr("Lampe"),
+            DeviceKind::Other => crate::langue::tr("Appareil"),
         }
     }
 }
@@ -220,12 +220,12 @@ impl Direction {
     ];
     pub fn label(self) -> &'static str {
         match self {
-            Direction::Right => "→ Vers la droite",
-            Direction::Left => "← Vers la gauche",
-            Direction::Down => "↓ Vers le bas",
-            Direction::Up => "↑ Vers le haut",
-            Direction::Out => "◎ Du centre vers l'extérieur",
-            Direction::In => "◉ De l'extérieur vers le centre",
+            Direction::Right => crate::langue::tr("→ Vers la droite"),
+            Direction::Left => crate::langue::tr("← Vers la gauche"),
+            Direction::Down => crate::langue::tr("↓ Vers le bas"),
+            Direction::Up => crate::langue::tr("↑ Vers le haut"),
+            Direction::Out => crate::langue::tr("◎ Du centre vers l'extérieur"),
+            Direction::In => crate::langue::tr("◉ De l'extérieur vers le centre"),
         }
     }
 }

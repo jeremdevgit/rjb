@@ -61,6 +61,8 @@ pub struct Config {
     pub internal_devices: bool,
     /// Fermer la fenêtre la réduit dans la zone de notification (sinon rJb quitte).
     pub close_to_tray: bool,
+    /// Langue de l'interface ("" = celle de Windows).
+    pub language: String,
 }
 
 impl Default for Config {
@@ -87,6 +89,7 @@ impl Default for Config {
                 "CloseToTray",
             )
             .is_none_or(|v| v != 0),
+            language: String::new(),
         }
     }
 }

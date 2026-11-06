@@ -97,13 +97,13 @@ impl Module {
                 return if r as u32 == 0x8007_0005 {
                     err("droits administrateur requis")
                 } else {
-                    err(format!("ouverture de PawnIO impossible ({r:#x})"))
+                    err(format!("ouverture de PawnIO impossible : {r:#x}"))
                 };
             }
             let r = (l.load)(h, blob.as_ptr(), blob.len());
             if r != 0 {
                 (l.close)(h);
-                return err(format!("module non pris en charge par ce matériel ({r:#x})"));
+                return err(format!("module non pris en charge par ce matériel : {r:#x}"));
             }
             Ok(Module { h: Mutex::new(h as usize) })
         }

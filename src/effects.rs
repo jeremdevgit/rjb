@@ -41,19 +41,19 @@ impl EffectKind {
 
     pub fn label(self) -> &'static str {
         match self {
-            EffectKind::Static => "Couleur fixe",
-            EffectKind::Breathing => "Respiration",
-            EffectKind::Spectrum => "Cycle de couleurs",
-            EffectKind::Rainbow => "Vague arc-en-ciel",
-            EffectKind::ColorWave => "Vague de couleurs",
-            EffectKind::Gradient => "Dégradé",
-            EffectKind::Comet => "Comète",
-            EffectKind::Twinkle => "Scintillement",
-            EffectKind::Strobe => "Stroboscope",
-            EffectKind::Fire => "Feu",
-            EffectKind::Aurora => "Aurore",
-            EffectKind::Custom => "Personnalisé (LED par LED)",
-            EffectKind::Off => "Éteint",
+            EffectKind::Static => crate::langue::tr("Couleur fixe"),
+            EffectKind::Breathing => crate::langue::tr("Respiration"),
+            EffectKind::Spectrum => crate::langue::tr("Cycle de couleurs"),
+            EffectKind::Rainbow => crate::langue::tr("Vague arc-en-ciel"),
+            EffectKind::ColorWave => crate::langue::tr("Vague de couleurs"),
+            EffectKind::Gradient => crate::langue::tr("Dégradé"),
+            EffectKind::Comet => crate::langue::tr("Comète"),
+            EffectKind::Twinkle => crate::langue::tr("Scintillement"),
+            EffectKind::Strobe => crate::langue::tr("Stroboscope"),
+            EffectKind::Fire => crate::langue::tr("Feu"),
+            EffectKind::Aurora => crate::langue::tr("Aurore"),
+            EffectKind::Custom => crate::langue::tr("Personnalisé (LED par LED)"),
+            EffectKind::Off => crate::langue::tr("Éteint"),
         }
     }
 

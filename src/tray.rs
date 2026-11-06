@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later — Copyright (C) 2026 jeremdevgit — voir LICENSE
 //! Icône de la zone de notification et son menu.
 
+use crate::langue::{tr, trd};
 use crate::engine::Shared;
 use crate::{post, Action};
 use tray_icon::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
@@ -53,17 +54,17 @@ impl Tray {
             (c.all_off, c.active_profile.clone(), c.profiles.keys().cloned().collect::<Vec<_>>())
         };
         let menu = Menu::new();
-        let open = MenuItem::with_id("open", "Ouvrir rJb", true, None);
-        let off = CheckMenuItem::with_id("off", "Tout éteindre", true, all_off, None);
-        let sub = Submenu::new("Profil", true);
+        let open = MenuItem::with_id("open", tr("Ouvrir rJb"), true, None);
+        let off = CheckMenuItem::with_id("off", tr("Tout éteindre"), true, all_off, None);
+        let sub = Submenu::new(tr("Profil"), true);
         self.profile_items.clear();
         for p in &profiles {
-            let it = CheckMenuItem::with_id(format!("profile:{p}"), p, true, *p == active, None);
+            let it = CheckMenuItem::with_id(format!("profile:{p}"), trd(p), true, *p == active, None);
             let _ = sub.append(&it);
             self.profile_items.push((p.clone(), it));
         }
-        let rescan = MenuItem::with_id("rescan", "Rechercher les appareils", true, None);
-        let quit = MenuItem::with_id("quit", "Quitter", true, None);
+        let rescan = MenuItem::with_id("rescan", tr("Rechercher les appareils"), true, None);
+        let quit = MenuItem::with_id("quit", tr("Quitter"), true, None);
         let _ = menu.append_items(&[
             &open,
             &PredefinedMenuItem::separator(),

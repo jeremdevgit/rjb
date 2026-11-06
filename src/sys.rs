@@ -291,7 +291,13 @@ pub fn pick_folder(title: &str) -> Option<PathBuf> {
 /// Boîte « Enregistrer sous » / « Ouvrir » pour un fichier JSON.
 pub fn pick_json(save: bool, default_name: &str) -> Option<PathBuf> {
     use windows_sys::Win32::UI::Controls::Dialogs::*;
-    let filter: Vec<u16> = "Configuration rJb (*.json)\0*.json\0Tous les fichiers\0*.*\0\0".encode_utf16().collect();
+    let filter: Vec<u16> = format!(
+        "{}\0*.json\0{}\0*.*\0\0",
+        crate::langue::tr("Configuration rJb (*.json)"),
+        crate::langue::tr("Tous les fichiers")
+    )
+    .encode_utf16()
+    .collect();
     let ext = w("json");
     let mut buf = [0u16; 1024];
     for (i, c) in default_name.encode_utf16().take(1000).enumerate() {

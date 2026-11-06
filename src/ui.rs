@@ -4,6 +4,7 @@
 use crate::config::Lighting;
 use crate::effects::{EffectKind, EffectSpec};
 use crate::engine::{default_lighting, Cmd, DeviceView, Shared};
+use crate::langue::{tr, trd, trf};
 use crate::model::*;
 use crate::{handle_common, take_actions, Action};
 use eframe::egui::{
@@ -140,10 +141,17 @@ pub(crate) fn apply_backdrop(cc: &eframe::CreationContext<'_>) -> bool {
     }
 }
 
+/// Polices chinoise (bit 0) et japonaise (bit 1) chargées.
+static CJK: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+fn cjk_loaded(lang: usize) -> bool {
+    CJK.load(std::sync::atomic::Ordering::Relaxed) & (1 << (lang - 6)) != 0
+}
+
 pub(crate) fn setup_style(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
     let dir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into()) + "\\Fonts\\";
-    let mut add = |name: &str, files: &[&str], family: FontFamily, front: bool| {
+    let mut add = |name: &str, files: &[&str], family: FontFamily, front: bool| -> bool {
         for f in files {
             if let Ok(b) = std::fs::read(format!("{dir}{f}")) {
                 fonts.font_data.insert(name.into(), Arc::new(FontData::from_owned(b)));
@@ -153,13 +161,28 @@ pub(crate) fn setup_style(ctx: &egui::Context) {
                 } else {
                     fam.push(name.into());
                 }
-                return;
+                return true;
             }
         }
+        false
     };
-    add("ui", &["SegUIVar.ttf", "segoeui.ttf"], FontFamily::Proportional, true);
-    add("sym", &["seguisym.ttf"], FontFamily::Proportional, false);
-    add("bold", &["seguisb.ttf", "segoeuib.ttf"], FontFamily::Name("bold".into()), true);
+    let _ = add("ui", &["SegUIVar.ttf", "segoeui.ttf"], FontFamily::Proportional, true);
+    let _ = add("sym", &["seguisym.ttf"], FontFamily::Proportional, false);
+    let _ = add("bold", &["seguisb.ttf", "segoeuib.ttf"], FontFamily::Name("bold".into()), true);
+    // chinois / japonais : police de Windows chargée seulement pour ces langues
+    let lang = crate::langue::actuelle();
+    let mut cjk = 0u8;
+    if lang == 6 || lang == 7 {
+        let files: &[&str] = if lang == 6 {
+            &["msyh.ttc", "msyhl.ttc", "simsun.ttc"]
+        } else {
+            &["YuGothM.ttc", "YuGothR.ttc", "meiryo.ttc", "msgothic.ttc"]
+        };
+        if add("cjk", files, FontFamily::Proportional, false) {
+            cjk = 1 << (lang - 6);
+        }
+    }
+    CJK.store(cjk, std::sync::atomic::Ordering::Relaxed);
     let prop = fonts.families[&FontFamily::Proportional].clone();
     fonts
         .families
@@ -268,7 +291,7 @@ pub(crate) fn glow(p: &egui::Painter, c: Pos2, r: f32, col: Color32) {
 
 pub(crate) fn chip(ui: &mut Ui, selected: bool, text: &str) -> egui::Response {
     let font = FontId::proportional(13.5);
-    let galley = ui.painter().layout_no_wrap(text.to_string(), font, TEXT);
+    let galley = ui.painter().layout_no_wrap(trd(text).into_owned(), font, TEXT);
     let size = vec2(galley.size().x + 26.0, 30.0);
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     let p = ui.painter();
@@ -293,18 +316,18 @@ fn one_line(t: &str, font: FontId, color: Color32, width: f32) -> egui::text::La
 }
 
 pub(crate) fn label_dim(ui: &mut Ui, t: &str) {
-    ui.label(RichText::new(t).color(DIM).size(12.5));
+    ui.label(RichText::new(trd(t)).color(DIM).size(12.5));
 }
 
 pub(crate) fn section(ui: &mut Ui, t: &str) {
     ui.add_space(4.0);
-    ui.label(RichText::new(t.to_uppercase()).color(DIM).size(11.5).font(bold(11.5)));
+    ui.label(RichText::new(trd(t).to_uppercase()).color(DIM).size(11.5).font(bold(11.5)));
 }
 
 fn slider(ui: &mut Ui, label: &str, v: &mut f32) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
-        ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new(label).color(DIM)));
+        ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new(tr(label)).color(DIM)));
         changed = ui
             .add(egui::Slider::new(v, 0.0..=1.0).show_value(false))
             .changed();
@@ -325,7 +348,7 @@ pub(crate) fn toggle(ui: &mut Ui, on: &mut bool, label: &str) -> bool {
     p.rect_stroke(rect, CornerRadius::same(11), Stroke::new(1.0_f32,glass(50)), StrokeKind::Inside);
     let x = egui::lerp(rect.left() + 11.0..=rect.right() - 11.0, t);
     p.circle_filled(pos2(x, rect.center().y), 8.0, TEXT);
-    ui.label(label);
+    ui.label(trd(label));
     resp.clicked()
 }
 
@@ -372,7 +395,7 @@ fn colors_editor(ui: &mut Ui, colors: &mut Vec<Color>, min: u8, max: u8) -> bool
         changed = true;
     }
     ui.horizontal_wrapped(|ui| {
-        ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new("Couleurs").color(DIM)));
+        ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new(tr("Couleurs")).color(DIM)));
         let mut remove = None;
         for (i, c) in colors.iter_mut().take(max as usize).enumerate() {
             let mut rgb = [c.r, c.g, c.b];
@@ -394,7 +417,7 @@ fn colors_editor(ui: &mut Ui, colors: &mut Vec<Color>, min: u8, max: u8) -> bool
         if colors.len() > max as usize {
             colors.truncate(max as usize);
         }
-        if colors.len() < max as usize && ui.button("＋").on_hover_text("Ajouter une couleur").clicked() {
+        if colors.len() < max as usize && ui.button("＋").on_hover_text(tr("Ajouter une couleur")).clicked() {
             let h = colors.len() as f32 * 67.0 + 200.0;
             colors.push(Color::from_hsv(h, 0.9, 1.0));
             changed = true;
@@ -409,7 +432,7 @@ fn colors_editor(ui: &mut Ui, colors: &mut Vec<Color>, min: u8, max: u8) -> bool
 fn direction_combo(ui: &mut Ui, d: &mut Direction, allowed: &[Direction]) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
-        ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new("Direction").color(DIM)));
+        ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new(tr("Direction")).color(DIM)));
         egui::ComboBox::from_id_salt("dir")
             .selected_text(d.label())
             .width(240.0)
@@ -587,7 +610,7 @@ fn preview(ui: &mut Ui, info: &DeviceInfo, colors: &[Color]) -> Option<(usize, u
                 .min_by(|a, b| pos_of(a).distance_sq(pt).total_cmp(&pos_of(b).distance_sq(pt)))
             {
                 if pos_of(l).distance(pt) < unit {
-                    resp.on_hover_text(&l.name);
+                    resp.on_hover_text(trd(&l.name));
                 }
             }
         }
@@ -730,7 +753,7 @@ impl App {
                 let mut b = cfg.brightness;
                 if ui
                     .add(egui::Slider::new(&mut b, 0.0..=1.0).show_value(false))
-                    .on_hover_text("Luminosité générale")
+                    .on_hover_text(tr("Luminosité générale"))
                     .changed()
                 {
                     cfg.brightness = b;
@@ -742,11 +765,11 @@ impl App {
                 let active = cfg.active_profile.clone();
                 let names: Vec<String> = cfg.profiles.keys().cloned().collect();
                 egui::ComboBox::from_id_salt("profile")
-                    .selected_text(format!("◈  {active}"))
+                    .selected_text(format!("◈  {}", trd(&active)))
                     .width(170.0)
                     .show_ui(ui, |ui| {
                         for n in names {
-                            if ui.selectable_label(n == active, &n).clicked() && n != active {
+                            if ui.selectable_label(n == active, trd(&n)).clicked() && n != active {
                                 cfg.active_profile = n;
                                 *reload = true;
                             }
@@ -786,7 +809,7 @@ impl App {
             ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
                 let scanning = self.shared.scanning.load(Ordering::Relaxed);
                 ui.horizontal(|ui| {
-                    if ui.button("⟳  Rechercher").clicked() {
+                    if ui.button(tr("⟳  Rechercher")).clicked() {
                         self.shared.send(Cmd::Rescan);
                     }
                     if scanning {
@@ -795,15 +818,15 @@ impl App {
                 });
                 let notices = self.shared.notices.lock().unwrap().clone();
                 for n in notices.iter().rev() {
-                    if n == crate::drivers::ADMIN_NOTICE && ui.button("🛡  Redémarrer en administrateur").clicked() {
+                    if n == crate::drivers::ADMIN_NOTICE && ui.button(tr("🛡  Redémarrer en administrateur")).clicked() {
                         crate::relaunch_elevated();
                     }
-                    if n.contains("PawnIO") && ui.button("⬇  Installer PawnIO").on_hover_text("Pilote signé requis pour la RAM et la carte mère").clicked() {
+                    if n.contains("PawnIO") && ui.button(tr("⬇  Installer PawnIO")).on_hover_text(tr("Pilote signé requis pour la RAM et la carte mère")).clicked() {
                         install_pawnio();
                     }
                     match n.strip_prefix(crate::drivers::INFO_PREFIX) {
-                        Some(info) => ui.label(RichText::new(info).weak().size(12.0)),
-                        None => ui.label(RichText::new(format!("⚠ {n}")).color(Color32::from_rgb(255, 196, 90)).size(12.0)),
+                        Some(info) => ui.label(RichText::new(trd(info)).weak().size(12.0)),
+                        None => ui.label(RichText::new(format!("⚠ {}", trd(n))).color(Color32::from_rgb(255, 196, 90)).size(12.0)),
                     };
                 }
             });
@@ -822,8 +845,8 @@ impl App {
         }
         p.text(pos2(rect.left() + 22.0, rect.center().y), Align2::CENTER_CENTER, glyph, FontId::proportional(18.0), TEXT);
         let tw = rect.width() - 74.0;
-        let title_g = p.layout_job(one_line(title, FontId::proportional(14.0), TEXT, tw));
-        let sub_g = p.layout_job(one_line(sub, FontId::proportional(11.5), DIM, tw));
+        let title_g = p.layout_job(one_line(&trd(title), FontId::proportional(14.0), TEXT, tw));
+        let sub_g = p.layout_job(one_line(&trd(sub), FontId::proportional(11.5), DIM, tw));
         p.galley(pos2(rect.left() + 42.0, rect.top() + 7.0), title_g, TEXT);
         p.galley(pos2(rect.left() + 42.0, rect.top() + 27.0), sub_g, DIM);
         if dot != Color32::TRANSPARENT {
@@ -852,12 +875,12 @@ impl App {
             ui.horizontal(|ui| {
                 ui.label(RichText::new(kind_glyph(info.kind)).size(26.0));
                 ui.vertical(|ui| {
-                    ui.label(RichText::new(&info.name).font(bold(20.0)));
+                    ui.label(RichText::new(trd(&info.name)).font(bold(20.0)));
                     label_dim(ui, &format!("{} · {} · {} LED", info.vendor, info.kind.label(), info.led_count()));
                 });
             });
             if let Some(e) = &d.error {
-                ui.label(RichText::new(format!("⚠ {e}")).color(Color32::from_rgb(255, 120, 120)));
+                ui.label(RichText::new(format!("⚠ {}", trd(e))).color(Color32::from_rgb(255, 120, 120)));
             }
             ui.add_space(8.0);
             if let Some((z, i)) = preview(ui, info, &d.colors) {
@@ -928,7 +951,7 @@ impl App {
                         }
                         if let Some((min, max)) = z.resizable {
                             ui.horizontal(|ui| {
-                                ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new(format!("LED · {}", z.name)).color(DIM)));
+                                ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new(format!("LED · {}", trd(&z.name))).color(DIM)));
                                 let mut n = z.leds.len() as u16;
                                 if ui.add(egui::DragValue::new(&mut n).range(min..=max)).changed() {
                                     self.shared.send(Cmd::Resize { id: info.id.clone(), zone: i, leds: n });
@@ -962,7 +985,7 @@ impl App {
                                 self.brush = Color::rgb(rgb[0], rgb[1], rgb[2]);
                             }
                             label_dim(ui, "Cliquez ou glissez sur l'aperçu pour peindre les LED.");
-                            if ui.button("Tout remplir").clicked() {
+                            if ui.button(tr("Tout remplir")).clicked() {
                                 for (i, z) in zones.iter_mut().enumerate() {
                                     if zi.is_none_or(|s| s == i) {
                                         z.custom = vec![self.brush; info.zones[i].leds.len()];
@@ -989,7 +1012,7 @@ impl App {
     fn all_page(&mut self, ui: &mut Ui, devices: &[DeviceView], changed: &mut Vec<String>) {
         card(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(RichText::new("Tous les appareils").font(bold(20.0)));
+            ui.label(RichText::new(tr("Tous les appareils")).font(bold(20.0)));
             label_dim(ui, "Un même effet, synchronisé sur l'ensemble de vos appareils.");
             ui.add_space(8.0);
             ui.horizontal_wrapped(|ui| {
@@ -1000,7 +1023,7 @@ impl App {
                     let c = average(&d.colors);
                     glow(p, pos2(r.left() + 16.0, r.center().y), 12.0, c.gamma_multiply(0.6));
                     p.circle_filled(pos2(r.left() + 16.0, r.center().y), 5.0, c);
-                    let g = p.layout_job(one_line(&d.info.name, FontId::proportional(13.0), TEXT, r.width() - 40.0));
+                    let g = p.layout_job(one_line(&trd(&d.info.name), FontId::proportional(13.0), TEXT, r.width() - 40.0));
                     p.galley(pos2(r.left() + 30.0, r.center().y - g.size().y / 2.0), g, TEXT);
                 }
             });
@@ -1011,7 +1034,7 @@ impl App {
             effect_editor(ui, &mut self.sync_spec);
             ui.add_space(10.0);
             if ui
-                .add(egui::Button::new(RichText::new("✦  Appliquer à tous les appareils").font(bold(14.0))).fill(Color32::from_rgba_unmultiplied(124, 92, 255, 170)))
+                .add(egui::Button::new(RichText::new(tr("✦  Appliquer à tous les appareils")).font(bold(14.0))).fill(Color32::from_rgba_unmultiplied(124, 92, 255, 170)))
                 .clicked()
             {
                 let mut cfg = self.shared.config.lock().unwrap();
@@ -1036,8 +1059,41 @@ impl App {
         let mut autostart: Option<bool> = None;
         card(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(RichText::new("Réglages").font(bold(20.0)));
+            ui.label(RichText::new(tr("Réglages")).font(bold(20.0)));
             ui.add_space(6.0);
+            section(ui, "Langue");
+            ui.horizontal(|ui| {
+                ui.label(tr("Langue de l'interface"));
+                let nom = |i: usize| -> String {
+                    // les écritures chinoise et japonaise ne s'affichent qu'avec leur police
+                    match i {
+                        6 | 7 if !cjk_loaded(i) => tr(if i == 6 { "Chinois simplifié" } else { "Japonais" }).to_string(),
+                        _ => crate::langue::NOMS[i].to_string(),
+                    }
+                };
+                let actuel = if cfg.language.is_empty() { tr("Automatique (langue de Windows)").to_string() } else { nom(crate::langue::actuelle()) };
+                let mut choix: Option<String> = None;
+                egui::ComboBox::from_id_salt("langue").selected_text(actuel).width(240.0).show_ui(ui, |ui| {
+                    if ui.selectable_label(cfg.language.is_empty(), tr("Automatique (langue de Windows)")).clicked() {
+                        choix = Some(String::new());
+                    }
+                    for (i, c) in crate::langue::CODES.iter().enumerate() {
+                        if ui.selectable_label(cfg.language == *c, nom(i)).clicked() {
+                            choix = Some(c.to_string());
+                        }
+                    }
+                });
+                if let Some(c) = choix {
+                    if c != cfg.language {
+                        crate::langue::init(&c);
+                        cfg.language = c;
+                        save = true;
+                        // polices chinoise / japonaise si besoin, menu de la zone de notification
+                        setup_style(ui.ctx());
+                        crate::post(Action::RebuildTray);
+                    }
+                }
+            });
             section(ui, "Démarrage et fermeture");
             ui.horizontal(|ui| {
                 if toggle(ui, &mut cfg.autostart, "Lancer rJb au démarrage du PC (réduit dans la zone de notification)") {
@@ -1046,7 +1102,7 @@ impl App {
                 }
             });
             ui.horizontal(|ui| {
-                ui.label("Bouton fermer de la fenêtre :");
+                ui.label(tr("Bouton fermer de la fenêtre :"));
                 if chip(ui, cfg.close_to_tray, "Réduire dans la zone de notification").clicked() {
                     cfg.close_to_tray = true;
                     save = true;
@@ -1061,7 +1117,7 @@ impl App {
             save |= toggle(ui, &mut cfg.off_on_sleep, "Éteindre l'éclairage pendant la mise en veille");
             save |= toggle(ui, &mut cfg.off_on_shutdown, "Éteindre l'éclairage en quittant rJb / à l'arrêt du PC");
             ui.horizontal(|ui| {
-                ui.label("Images par seconde des effets");
+                ui.label(tr("Images par seconde des effets"));
                 for f in [15u32, 30, 60, 120] {
                     if chip(ui, cfg.fps == f, &f.to_string()).clicked() {
                         cfg.fps = f;
@@ -1076,8 +1132,8 @@ impl App {
             }
             if cfg.internal_devices && !crate::drivers::pawnio::installed() {
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("⚠ PawnIO n'est pas installé.").color(Color32::from_rgb(255, 196, 90)));
-                    if ui.button("⬇  Installer PawnIO").clicked() {
+                    ui.label(RichText::new(tr("⚠ PawnIO n'est pas installé.")).color(Color32::from_rgb(255, 196, 90)));
+                    if ui.button(tr("⬇  Installer PawnIO")).clicked() {
                         install_pawnio();
                     }
                 });
@@ -1096,7 +1152,7 @@ impl App {
                         cfg.active_profile = n.clone();
                         *reload = true;
                     }
-                    if cfg.profiles.len() > 1 && ui.small_button("Supprimer").clicked() {
+                    if cfg.profiles.len() > 1 && ui.small_button(tr("Supprimer")).clicked() {
                         cfg.profiles.remove(&n);
                         if cfg.active_profile == n {
                             cfg.active_profile = cfg.profiles.keys().next().unwrap().clone();
@@ -1106,9 +1162,9 @@ impl App {
                 });
             }
             ui.horizontal(|ui| {
-                ui.add(egui::TextEdit::singleline(&mut self.new_profile).hint_text("Nom du nouveau profil").desired_width(220.0));
+                ui.add(egui::TextEdit::singleline(&mut self.new_profile).hint_text(tr("Nom du nouveau profil")).desired_width(220.0));
                 let name = self.new_profile.trim().to_string();
-                if ui.add_enabled(!name.is_empty() && !cfg.profiles.contains_key(&name), egui::Button::new("＋ Créer à partir de l'actuel")).clicked() {
+                if ui.add_enabled(!name.is_empty() && !cfg.profiles.contains_key(&name), egui::Button::new(tr("＋ Créer à partir de l'actuel"))).clicked() {
                     let p = cfg.profile().clone();
                     cfg.profiles.insert(name.clone(), p);
                     cfg.active_profile = name;
@@ -1123,21 +1179,21 @@ impl App {
             section(ui, "Sauvegarde de la configuration");
             label_dim(ui, "Profils, effets et réglages de tous les appareils, dans un fichier à garder ou à copier sur un autre PC.");
             ui.horizontal(|ui| {
-                if ui.button("⬆  Exporter…").clicked() {
+                if ui.button(tr("⬆  Exporter…")).clicked() {
                     if let Some(p) = crate::sys::pick_json(true, "rJb-configuration.json") {
                         self.status = Some(match cfg.export_to(&p) {
-                            Ok(()) => (true, format!("Configuration exportée dans {}", p.display())),
+                            Ok(()) => (true, trf("Configuration exportée dans {chemin}", &[("chemin", &p.display().to_string())])),
                             Err(e) => (false, e),
                         });
                     }
                 }
-                if ui.button("⬇  Importer…").clicked() {
+                if ui.button(tr("⬇  Importer…")).clicked() {
                     if let Some(p) = crate::sys::pick_json(false, "") {
                         self.status = Some(match crate::config::Config::import_from(&p, &cfg) {
                             Ok(c) => {
                                 *cfg = c;
                                 *reload = true;
-                                (true, "Configuration importée et appliquée.".to_string())
+                                (true, tr("Configuration importée et appliquée.").to_string())
                             }
                             Err(e) => (false, e),
                         });
@@ -1149,13 +1205,13 @@ impl App {
                     if logging {
                         let _ = std::fs::create_dir_all(p.parent().unwrap_or(&p));
                         let _ = std::fs::write(&p, b"");
-                        self.status = Some((true, "Journal activé : il sera rempli au prochain lancement de rJb.".into()));
+                        self.status = Some((true, tr("Journal activé : il sera rempli au prochain lancement de rJb.").into()));
                     } else {
                         let _ = std::fs::remove_file(&p);
                         self.status = None;
                     }
                 }
-                if ui.button("📁  Ouvrir le dossier").clicked() {
+                if ui.button(tr("📁  Ouvrir le dossier")).clicked() {
                     if let Some(d) = crate::config::Config::path().parent() {
                         let _ = std::fs::create_dir_all(d);
                         crate::sys::shell_open(&d.to_string_lossy());
@@ -1164,7 +1220,7 @@ impl App {
             });
             if let Some((ok, msg)) = &self.status {
                 let col = if *ok { GREEN } else { Color32::from_rgb(255, 120, 120) };
-                ui.label(RichText::new(msg).color(col).size(12.5));
+                ui.label(RichText::new(trd(msg)).color(col).size(12.5));
             }
         });
         ui.add_space(10.0);
@@ -1188,7 +1244,7 @@ impl App {
         card(ui, |ui| {
             ui.set_width(ui.available_width());
             section(ui, "À propos");
-            ui.label(format!("rJb {} — logiciel libre (GPL-2.0-or-later), créé par jeremdevgit", env!("CARGO_PKG_VERSION")));
+            ui.label(trf("rJb {version} — logiciel libre (GPL-2.0-or-later), créé par jeremdevgit", &[("version", env!("CARGO_PKG_VERSION"))]));
             label_dim(ui, "Protocoles des appareils issus du travail de la communauté OpenRGB (GPL-2.0-or-later).");
             label_dim(ui, "Modules du pilote PawnIO inclus : licence LGPL-2.1, sources sur github.com/namazso/PawnIO.Modules.");
             label_dim(ui, &format!("Configuration : {}", crate::config::Config::path().display()));
@@ -1206,7 +1262,7 @@ impl App {
             ui.add_space(4.0);
             for (name, desc, url) in MES_LOGICIELS {
                 ui.horizontal(|ui| {
-                    if ui.button("Télécharger").clicked() {
+                    if ui.button(tr("Télécharger")).clicked() {
                         crate::sys::open_as_user(url);
                     }
                     ui.label(RichText::new(*name).strong());
@@ -1214,7 +1270,7 @@ impl App {
                 });
             }
             ui.add_space(4.0);
-            if ui.button("Tous mes logiciels sur GitHub").clicked() {
+            if ui.button(tr("Tous mes logiciels sur GitHub")).clicked() {
                 crate::sys::open_as_user("https://github.com/jeremdevgit");
             }
         });
@@ -1238,20 +1294,20 @@ impl App {
         let conflicts = self.conflicts.get_or_insert_with(detect_conflicts).clone();
         card(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(RichText::new("Aide").font(bold(20.0)));
+            ui.label(RichText::new(tr("Aide")).font(bold(20.0)));
             ui.add_space(4.0);
             section(ui, "Vérification rapide");
             let warn = Color32::from_rgb(255, 196, 90);
             let line = |ui: &mut Ui, ok: bool, text: &str| {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(if ok { "✔" } else { "⚠" }).color(if ok { GREEN } else { warn }));
-                    ui.label(text);
+                    ui.label(trd(text));
                 });
             };
             if conflicts.is_empty() {
                 line(ui, true, "Aucun autre logiciel RGB détecté en cours d'exécution.");
             } else {
-                line(ui, false, &format!("Logiciels RGB ouverts qui peuvent reprendre la main : {}", conflicts.join(", ")));
+                line(ui, false, &trf("Logiciels RGB ouverts qui peuvent reprendre la main : {liste}", &[("liste", &conflicts.join(", "))]));
             }
             line(
                 ui,
@@ -1265,16 +1321,16 @@ impl App {
             let pawn = crate::drivers::pawnio::installed();
             line(ui, pawn, if pawn { "Le pilote PawnIO est installé." } else { "Le pilote PawnIO n'est pas installé." });
             ui.horizontal(|ui| {
-                if ui.button("⟳  Revérifier").clicked() {
+                if ui.button(tr("⟳  Revérifier")).clicked() {
                     self.conflicts = None;
                 }
-                if !crate::is_elevated() && ui.button("🛡  Redémarrer en administrateur").clicked() {
+                if !crate::is_elevated() && ui.button(tr("🛡  Redémarrer en administrateur")).clicked() {
                     crate::relaunch_elevated();
                 }
-                if !pawn && ui.button("⬇  Installer PawnIO").clicked() {
+                if !pawn && ui.button(tr("⬇  Installer PawnIO")).clicked() {
                     install_pawnio();
                 }
-                if ui.button("⟳  Rechercher les appareils").clicked() {
+                if ui.button(tr("⟳  Rechercher les appareils")).clicked() {
                     self.shared.send(Cmd::Rescan);
                 }
             });
@@ -1284,11 +1340,11 @@ impl App {
             ui.set_width(ui.available_width());
             section(ui, "Problèmes fréquents");
             for (i, (q, a)) in FAQ.iter().enumerate() {
-                egui::CollapsingHeader::new(RichText::new(*q).font(bold(14.5)))
+                egui::CollapsingHeader::new(RichText::new(tr(q)).font(bold(14.5)))
                     .id_salt(("faq", i))
                     .default_open(i == 0)
                     .show(ui, |ui| {
-                        for l in a.lines() {
+                        for l in tr(a).lines() {
                             ui.label(RichText::new(l).color(DIM));
                         }
                     });
@@ -1403,7 +1459,12 @@ fn install_pawnio() {
     let _ = std::process::Command::new(crate::sys::system_tool("cmd.exe"))
         .args([
             "/C",
-            "winget install --id namazso.PawnIO -e --accept-package-agreements --accept-source-agreements & echo. & echo Relancez rJb une fois l'installation terminee. & pause",
+            format!(
+                "winget install --id namazso.PawnIO -e --accept-package-agreements --accept-source-agreements & echo. & echo {} & pause",
+                // la console n'affiche correctement que l'ASCII
+                if crate::langue::code() == "fr" { "Relancez rJb une fois l'installation terminee." } else { "Restart rJb once the installation is complete." }
+            )
+            .as_str(),
         ])
         .spawn();
 }
