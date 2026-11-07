@@ -294,7 +294,6 @@ mod platform {
     #[cfg(test)]
     mod windows_tests {
         use super::*;
-        use std::os::windows::process::CommandExt;
         fn root() -> PathBuf {
             use windows_sys::Win32::System::Com::CoTaskMemFree;
             use windows_sys::Win32::UI::Shell::{FOLDERID_ProgramFiles, SHGetKnownFolderPath};
@@ -355,13 +354,13 @@ mod platform {
             let command = std::env::var_os("SystemRoot")
                 .map(PathBuf::from)
                 .unwrap()
-                .join("System32/cmd.exe");
+                .join("System32/WindowsPowerShell/v1.0/powershell.exe");
+            // Paths are fresh test fixtures, not external input. Use PowerShell's
+            // native junction creation rather than cmd.exe's special quoting.
+            let script = format!("$ErrorActionPreference='Stop'; New-Item -ItemType Junction -Path '{}' -Target '{}' | Out-Null", junction.display(), target.display());
             assert!(std::process::Command::new(command)
-                .raw_arg(format!(
-                    r#"/D /C mklink /J "{}" "{}""#,
-                    junction.display(),
-                    target.display()
-                ))
+                .args(["-NoProfile", "-NonInteractive", "-Command"])
+                .arg(script)
                 .status()
                 .unwrap()
                 .success());
