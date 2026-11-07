@@ -34,12 +34,20 @@ pub struct Options {
 impl Options {
     /// Choix par défaut, ou ceux de l'installation existante.
     pub fn current() -> Options {
-        let get = |n: &str, d: bool| sys::reg_get_dword(HKEY_LOCAL_MACHINE, APP_KEY, n).map(|v| v != 0).unwrap_or(d);
+        let get = |n: &str, d: bool| {
+            sys::reg_get_dword(HKEY_LOCAL_MACHINE, APP_KEY, n)
+                .map(|v| v != 0)
+                .unwrap_or(d)
+        };
         let existing = installed_dir();
         Options {
             // mise à jour / réparation : on reprend l'état réel, l'utilisateur
             // a pu changer ces options dans rJb depuis l'installation
-            autostart: if existing.is_some() { autostart_enabled() } else { true },
+            autostart: if existing.is_some() {
+                autostart_enabled()
+            } else {
+                true
+            },
             close_to_tray: crate::config::Config::load().close_to_tray,
             dir: existing.unwrap_or_else(|| sys::program_files().join("rJb")),
             desktop: get("Desktop", true),
@@ -61,7 +69,9 @@ pub fn installed_dir() -> Option<PathBuf> {
 }
 
 fn eq_path(a: &Path, b: &Path) -> bool {
-    a.to_string_lossy().trim_end_matches('\\').eq_ignore_ascii_case(b.to_string_lossy().trim_end_matches('\\'))
+    a.to_string_lossy()
+        .trim_end_matches('\\')
+        .eq_ignore_ascii_case(b.to_string_lossy().trim_end_matches('\\'))
 }
 
 fn under(p: &Path, root: &Path) -> bool {
@@ -71,31 +81,29 @@ fn under(p: &Path, root: &Path) -> bool {
     p.starts_with(&format!("{r}\\"))
 }
 
-/// Dossier dont aucun parent n'est modifiable par un utilisateur standard :
-/// sous Program Files, ou directement à la racine d'un lecteur (le dossier
-/// lui-même est alors verrouillé par l'installateur).
+/// Vérifie le propriétaire, les droits réels et tous les parents du dossier.
 pub fn secure_dir(dir: &Path) -> bool {
-    let pf86 = std::env::var_os("ProgramFiles(x86)").map(PathBuf::from);
-    if under(dir, &sys::program_files()) || pf86.as_deref().is_some_and(|p| under(dir, p)) {
-        return true;
-    }
-    let s = dir.to_string_lossy();
-    let parts: Vec<&str> = s.trim_end_matches('\\').split('\\').collect();
-    parts.len() == 2 && parts[0].len() == 2 && parts[0].ends_with(':')
+    crate::install_security::trusted(dir)
 }
 
 /// rJb s'exécute-t-il depuis son installation officielle et protégée ?
 pub fn running_from_trusted_install() -> bool {
-    let Ok(exe) = std::env::current_exe() else { return false };
-    let Some(dir) = exe.parent() else { return false };
-    installed_dir().is_some_and(|d| eq_path(&d, dir) && secure_dir(dir))
+    let Ok(exe) = std::env::current_exe() else {
+        return false;
+    };
+    let Some(dir) = exe.parent() else {
+        return false;
+    };
+    installed_dir().is_some_and(|d| {
+        eq_path(&d, dir) && secure_dir(dir) && crate::install_security::trusted(&exe)
+    })
 }
 
 /// Vérifie et complète le dossier choisi : on n'installe jamais en vrac dans
 /// un dossier existant qui contient autre chose (la désinstallation n'efface
 /// que nos propres fichiers, mais autant garder les choses nettes).
 pub fn normalize_dir(input: &str) -> Result<PathBuf, String> {
-    let p = PathBuf::from(input.trim().trim_matches('"'));
+    let p = crate::install_security::normalize(input)?;
     let s = p.to_string_lossy().to_string();
     if !(s.len() > 3 && s.as_bytes()[1] == b':' && s.as_bytes()[2] == b'\\') {
         return Err("Indiquez un chemin complet, par exemple C:\\Program Files\\rJb".into());
@@ -103,13 +111,19 @@ pub fn normalize_dir(input: &str) -> Result<PathBuf, String> {
     if s.contains(['<', '>', '"', '|', '?', '*']) {
         return Err("Le chemin contient des caractères interdits.".into());
     }
-    let windir = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| "C:\\Windows".into());
+    let windir = std::env::var_os("SystemRoot")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| "C:\\Windows".into());
     if eq_path(&p, &windir) || under(&p, &windir) {
         return Err("Impossible d'installer dans le dossier de Windows.".into());
     }
     let ours = |d: &Path| d.join(APP_EXE).exists();
     let non_empty = std::fs::read_dir(&p).is_ok_and(|mut it| it.next().is_some());
-    Ok(if non_empty && !ours(&p) { p.join("rJb") } else { p })
+    Ok(if non_empty && !ours(&p) {
+        p.join("rJb")
+    } else {
+        p
+    })
 }
 
 // ── instance en cours ───────────────────────────────────────────────────
@@ -137,13 +151,19 @@ fn task_exists() -> bool {
 }
 
 fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// Tâche « à l'ouverture de session, privilèges les plus élevés », sans les
 /// réglages par défaut de schtasks qui arrêteraient rJb au bout de 72 h ou
 /// sur batterie.
 fn create_task(exe: &Path) -> bool {
+    if !crate::install_security::trusted(exe) {
+        return false;
+    }
     let user = format!(
         "{}\\{}",
         std::env::var("USERDOMAIN").unwrap_or_default(),
@@ -174,7 +194,9 @@ fn create_task(exe: &Path) -> bool {
     );
     // le fichier est écrit dans le dossier d'installation, protégé : personne
     // ne peut le modifier entre son écriture et sa lecture par schtasks
-    let Some(dir) = exe.parent() else { return false };
+    let Some(dir) = exe.parent() else {
+        return false;
+    };
     let file = dir.join("autostart.xml");
     let mut bytes = vec![0xFF, 0xFE];
     for u in xml.encode_utf16() {
@@ -183,7 +205,17 @@ fn create_task(exe: &Path) -> bool {
     if std::fs::write(&file, bytes).is_err() {
         return false;
     }
-    let ok = sys::run_hidden("schtasks.exe", &["/Create", "/F", "/TN", TASK, "/XML", &file.to_string_lossy()]) == Some(0);
+    let ok = sys::run_hidden(
+        "schtasks.exe",
+        &[
+            "/Create",
+            "/F",
+            "/TN",
+            TASK,
+            "/XML",
+            &file.to_string_lossy(),
+        ],
+    ) == Some(0);
     let _ = std::fs::remove_file(&file);
     ok
 }
@@ -191,7 +223,12 @@ fn create_task(exe: &Path) -> bool {
 fn set_run_key(exe: Option<&Path>) {
     match exe {
         Some(e) => {
-            sys::reg_set_str(HKEY_CURRENT_USER, RUN_KEY, "rJb", &format!("\"{}\" --minimized", e.display()));
+            sys::reg_set_str(
+                HKEY_CURRENT_USER,
+                RUN_KEY,
+                "rJb",
+                &format!("\"{}\" --minimized", e.display()),
+            );
         }
         None => sys::reg_delete_value(HKEY_CURRENT_USER, RUN_KEY, "rJb"),
     }
@@ -205,7 +242,9 @@ pub fn autostart_enabled() -> bool {
 /// protégée, rJb démarre en administrateur (RAM et carte mère disponibles
 /// d'emblée) ; une invite UAC est affichée si besoin pour créer la tâche.
 pub fn set_autostart(enable: bool) {
-    let Ok(exe) = std::env::current_exe() else { return };
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
     let elevated = crate::is_elevated();
     if enable && running_from_trusted_install() {
         set_run_key(None);
@@ -228,7 +267,9 @@ pub fn set_autostart(enable: bool) {
 
 /// `--autostart on|off`, appelé en administrateur par `set_autostart`.
 pub fn autostart_helper(on: bool) -> i32 {
-    let Ok(exe) = std::env::current_exe() else { return 1 };
+    let Ok(exe) = std::env::current_exe() else {
+        return 1;
+    };
     if on {
         if !running_from_trusted_install() {
             return 2;
@@ -249,32 +290,18 @@ fn shortcut_paths() -> (Option<PathBuf>, Option<PathBuf>) {
 }
 
 /// Seuls les administrateurs et le système peuvent modifier le dossier.
-fn lock_down(dir: &Path) {
-    if under(dir, &sys::program_files()) {
-        return; // déjà protégé par Windows
-    }
-    let d = dir.to_string_lossy().to_string();
-    sys::run_hidden(
-        "icacls.exe",
-        &[
-            &d,
-            "/inheritance:r",
-            "/grant:r",
-            "*S-1-5-32-544:(OI)(CI)F",
-            "/grant:r",
-            "*S-1-5-18:(OI)(CI)F",
-            "/grant:r",
-            "*S-1-5-32-545:(OI)(CI)RX",
-            "/T",
-            "/C",
-            "/Q",
-        ],
-    );
+fn lock_down(dir: &Path) -> Result<(), String> {
+    crate::install_security::prepare(dir)
 }
 
 fn dir_size_kb(dir: &Path) -> u32 {
     std::fs::read_dir(dir)
-        .map(|it| it.flatten().filter_map(|e| e.metadata().ok()).map(|m| m.len()).sum::<u64>())
+        .map(|it| {
+            it.flatten()
+                .filter_map(|e| e.metadata().ok())
+                .map(|m| m.len())
+                .sum::<u64>()
+        })
         .unwrap_or(0) as u32
         / 1024
 }
@@ -282,32 +309,61 @@ fn dir_size_kb(dir: &Path) -> u32 {
 /// Copie en passant par un fichier temporaire : un fichier à moitié écrit ne
 /// remplace jamais une version qui fonctionne.
 fn copy_atomic(src: &Path, dst: &Path) -> std::io::Result<()> {
+    let policy_error = |e: String| std::io::Error::new(std::io::ErrorKind::PermissionDenied, e);
     if eq_path(src, dst) {
-        return Ok(());
+        return crate::install_security::seal_file(dst).map_err(policy_error);
     }
-    let tmp = dst.with_extension("new");
-    std::fs::copy(src, &tmp)?;
-    std::fs::rename(&tmp, dst).inspect_err(|_| {
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let tmp = dst.with_extension(format!("install-{}-{nonce}.tmp", std::process::id()));
+    let result = (|| {
+        let mut input = std::fs::File::open(src)?;
+        let mut output = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&tmp)?;
+        std::io::copy(&mut input, &mut output)?;
+        output.sync_all()?;
+        drop(output);
+        crate::install_security::seal_file(&tmp).map_err(policy_error)?;
+        std::fs::rename(&tmp, dst)?;
+        if !crate::install_security::trusted(dst) {
+            return Err(policy_error(
+                crate::install_security::PERMISSIONS_FAILED.into(),
+            ));
+        }
+        Ok(())
+    })();
+    if result.is_err() {
         let _ = std::fs::remove_file(&tmp);
-    })
+    }
+    result
 }
 
 /// Installe (ou met à jour / répare) rJb. `step` reçoit l'avancement.
 pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> {
+    let mut checked = o.clone();
+    checked.dir = normalize_dir(&o.dir.to_string_lossy())?;
+    let o = &checked;
     let mut notes = Vec::new();
     let src = std::env::current_exe().map_err(|e| e.to_string())?;
     let previous = installed_dir();
     step("Fermeture de rJb s'il est ouvert…");
     if !stop_running_app() {
-        return Err("rJb est toujours ouvert. Quittez-le depuis la zone de notification puis réessayez.".into());
+        return Err(
+            "rJb est toujours ouvert. Quittez-le depuis la zone de notification puis réessayez."
+                .into(),
+        );
     }
     step("Copie des fichiers…");
-    std::fs::create_dir_all(&o.dir).map_err(|e| format!("Impossible de créer le dossier : {e}"))?;
-    lock_down(&o.dir);
+    lock_down(&o.dir)?;
     let app = o.dir.join(APP_EXE);
     let maint = o.dir.join(MAINTENANCE_EXE);
     copy_atomic(&src, &app).map_err(|e| format!("Copie de rJb.exe impossible : {e}"))?;
-    copy_atomic(&src, &maint).map_err(|e| format!("Copie du programme de désinstallation impossible : {e}"))?;
+    copy_atomic(&src, &maint)
+        .map_err(|e| format!("Copie du programme de désinstallation impossible : {e}"))?;
     // ancienne version : ses fichiers sont retirés une fois la nouvelle copiée
     // (profils et réglages conservés) ; installée ailleurs, elle ne reste pas orpheline
     if let Some(old) = previous {
@@ -346,16 +402,36 @@ pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> 
     sys::reg_set_str(hk, k, "DisplayVersion", env!("CARGO_PKG_VERSION"));
     sys::reg_set_str(hk, k, "Publisher", "jeremdevgit");
     sys::reg_set_str(hk, k, "URLInfoAbout", "https://github.com/jeremdevgit/rjb");
-    sys::reg_set_str(hk, k, "URLUpdateInfo", "https://github.com/jeremdevgit/rjb/releases/latest");
+    sys::reg_set_str(
+        hk,
+        k,
+        "URLUpdateInfo",
+        "https://github.com/jeremdevgit/rjb/releases/latest",
+    );
     sys::reg_set_str(hk, k, "DisplayIcon", &format!("{},0", app.display()));
     sys::reg_set_str(hk, k, "InstallLocation", &o.dir.to_string_lossy());
     sys::reg_set_str(hk, k, "UninstallString", &m);
     sys::reg_set_str(hk, k, "ModifyPath", &m);
-    sys::reg_set_str(hk, k, "QuietUninstallString", &format!("\"{}\" --uninstall --quiet", maint.display()));
-    sys::reg_set_str(hk, k, "Comments", crate::langue::tr("Contrôle RGB unifié et léger"));
+    sys::reg_set_str(
+        hk,
+        k,
+        "QuietUninstallString",
+        &format!("\"{}\" --uninstall --quiet", maint.display()),
+    );
+    sys::reg_set_str(
+        hk,
+        k,
+        "Comments",
+        crate::langue::tr("Contrôle RGB unifié et léger"),
+    );
     sys::reg_set_dword(hk, k, "EstimatedSize", dir_size_kb(&o.dir));
     sys::reg_set_dword(hk, k, "NoRepair", 0);
-    for (n, v) in [("Desktop", o.desktop), ("StartMenu", o.start_menu), ("Autostart", o.autostart), ("CloseToTray", o.close_to_tray)] {
+    for (n, v) in [
+        ("Desktop", o.desktop),
+        ("StartMenu", o.start_menu),
+        ("Autostart", o.autostart),
+        ("CloseToTray", o.close_to_tray),
+    ] {
         sys::reg_set_dword(hk, APP_KEY, n, v as u32);
     }
 
@@ -422,11 +498,18 @@ pub fn repair(step: &dyn Fn(&str)) -> Result<Vec<String>, String> {
 /// Désinstalle. `everything` supprime aussi les réglages et journaux.
 pub fn uninstall(everything: bool, step: &dyn Fn(&str)) -> Result<(), String> {
     let dir = installed_dir()
-        .or_else(|| std::env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf)))
+        .or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|e| e.parent().map(Path::to_path_buf))
+        })
         .ok_or("Installation introuvable")?;
     step("Fermeture de rJb…");
     if !stop_running_app() {
-        return Err("rJb est toujours ouvert. Quittez-le depuis la zone de notification puis réessayez.".into());
+        return Err(
+            "rJb est toujours ouvert. Quittez-le depuis la zone de notification puis réessayez."
+                .into(),
+        );
     }
     step("Démarrage automatique et raccourcis…");
     sys::run_hidden("schtasks.exe", &["/Delete", "/F", "/TN", TASK]);
@@ -462,9 +545,14 @@ pub fn uninstall(everything: bool, step: &dyn Fn(&str)) -> Result<(), String> {
 /// fermeture. À appeler au moment de quitter.
 pub fn finish_uninstall() {
     use std::os::windows::process::CommandExt;
-    let Some(maint) = std::env::current_exe().ok() else { return };
+    let Some(maint) = std::env::current_exe().ok() else {
+        return;
+    };
     let Some(dir) = maint.parent() else { return };
-    if !maint.file_name().is_some_and(|n| n.eq_ignore_ascii_case(MAINTENANCE_EXE)) {
+    if !maint
+        .file_name()
+        .is_some_and(|n| n.eq_ignore_ascii_case(MAINTENANCE_EXE))
+    {
         return; // seulement depuis le programme de désinstallation installé
     }
     let script = format!(

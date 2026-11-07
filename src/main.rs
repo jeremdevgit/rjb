@@ -13,6 +13,7 @@ mod effects;
 mod engine;
 mod icon;
 mod install;
+mod install_security;
 mod langue;
 mod layout;
 mod model;

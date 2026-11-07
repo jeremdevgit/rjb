@@ -1,5 +1,22 @@
 # Historique des versions
 
+## 1.2.1 — 2026-11-07 — Sécurité / Security
+
+**Français**
+
+- Installation : chemins ambigus et jonctions refusés ; résolution des chemins, contrôle des propriétaires et droits réels des dossiers et de leurs parents.
+- Échec explicite si la protection ne peut pas être établie. Exécutables protégés et vérifiés avant remplacement.
+- Le démarrage à privilèges élevés exige une installation dont les droits réels sont vérifiés.
+- CI : Actions épinglées, publication isolée et tests Windows des ACL/jonctions.
+
+**English**
+
+- Reject ambiguous paths and reparse points, resolve paths, and verify actual owners and directory/parent permissions.
+- Fail closed on protection errors; protect staged executables before replacement.
+- Elevated autostart requires a verified protected installation.
+- Pin CI Actions, isolate release permissions and add native ACL/junction tests.
+
+
 ## 1.2.0 — 2026-11-06
 
 **English**

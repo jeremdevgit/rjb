@@ -1,6 +1,6 @@
 [package]
 name = "rjb"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 license = "GPL-2.0-or-later"
 description = "rJb : contrôle RGB unifié et léger pour tous vos périphériques et composants"
@@ -18,7 +18,7 @@ serde_json = "1"
 raw-window-handle = "0.6"
 windows-sys = { version = "0.59", features = [
     "Win32_UI_Input_KeyboardAndMouse",
-    "Win32_Security",
+    "Win32_Security", "Win32_Security_Authorization",
     "Win32_UI_Shell",
     "Win32_UI_Shell_Common",
     "Win32_Foundation",
