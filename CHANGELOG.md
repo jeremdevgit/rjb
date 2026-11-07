@@ -2,6 +2,8 @@
 
 ## 1.2.1 — 2026-11-07 — Sécurité / Security
 
+- Vérification des pointeurs COM avant utilisation ; Tokio 1.54.1 dans le verrou de dépendances. Éditeur documenté dans EDITEUR.md.
+- Check COM output pointers before use; update Tokio lock entry to 1.54.1.
 **Français**
 
 - Installation : chemins ambigus et jonctions refusés ; résolution des chemins, contrôle des propriétaires et droits réels des dossiers et de leurs parents.
