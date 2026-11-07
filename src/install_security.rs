@@ -294,6 +294,7 @@ mod platform {
     #[cfg(test)]
     mod windows_tests {
         use super::*;
+        use std::os::windows::process::CommandExt;
         fn root() -> PathBuf {
             use windows_sys::Win32::System::Com::CoTaskMemFree;
             use windows_sys::Win32::UI::Shell::{FOLDERID_ProgramFiles, SHGetKnownFolderPath};
@@ -356,9 +357,11 @@ mod platform {
                 .unwrap()
                 .join("System32/cmd.exe");
             assert!(std::process::Command::new(command)
-                .args(["/C", "mklink", "/J"])
-                .arg(&junction)
-                .arg(&target)
+                .raw_arg(format!(
+                    r#"/D /C mklink /J "{}" "{}""#,
+                    junction.display(),
+                    target.display()
+                ))
                 .status()
                 .unwrap()
                 .success());
