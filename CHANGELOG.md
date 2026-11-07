@@ -2,6 +2,8 @@
 
 ## 1.2.1 — 2026-11-07 — Sécurité / Security
 
+- Création atomique des dossiers avec propriétaire/DACL protégés dès l'origine ; refus d'une création concurrente non fiable. Migration par défaut vers un emplacement protégé, sans suivre les anciens dossiers non fiables ; rJb désactive l'ancien démarrage élevé avant migration.
+- Create directories atomically with protected ownership/DACLs; reject an untrusted concurrent creator. Default upgrades choose a protected location and do not traverse unsafe old folders; rJb disables unsafe previous elevated startup before migration.
 - Vérification des pointeurs COM avant utilisation ; Tokio 1.54.1 dans le verrou de dépendances. Éditeur documenté dans EDITEUR.md.
 - Check COM output pointers before use; update Tokio lock entry to 1.54.1.
 **Français**

@@ -49,7 +49,10 @@ impl Options {
                 true
             },
             close_to_tray: crate::config::Config::load().close_to_tray,
-            dir: existing.unwrap_or_else(|| sys::program_files().join("rJb")),
+            dir: crate::install_security::preferred_directory(
+                existing,
+                sys::program_files().join("rJb"),
+            ),
             desktop: get("Desktop", true),
             start_menu: get("StartMenu", true),
             pawnio: !crate::drivers::pawnio::installed(),
@@ -344,12 +347,25 @@ fn copy_atomic(src: &Path, dst: &Path) -> std::io::Result<()> {
 
 /// Installe (ou met à jour / répare) rJb. `step` reçoit l'avancement.
 pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> {
+    let previous = installed_dir();
+    if previous
+        .as_ref()
+        .is_some_and(|p| !crate::install_security::trusted(&p.join(APP_EXE)))
+    {
+        // Disable the old elevated entry before validating/copying a replacement.
+        // A failed migration must not leave an unsafe scheduled task active.
+        if task_exists()
+            && sys::run_hidden("schtasks.exe", &["/Delete", "/F", "/TN", TASK]) != Some(0)
+        {
+            return Err("Impossible de désactiver l'ancien démarrage non sécurisé.".into());
+        }
+        set_run_key(None);
+    }
     let mut checked = o.clone();
     checked.dir = normalize_dir(&o.dir.to_string_lossy())?;
     let o = &checked;
     let mut notes = Vec::new();
     let src = std::env::current_exe().map_err(|e| e.to_string())?;
-    let previous = installed_dir();
     step("Fermeture de rJb s'il est ouvert…");
     if !stop_running_app() {
         return Err(
@@ -366,7 +382,7 @@ pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> 
         .map_err(|e| format!("Copie du programme de désinstallation impossible : {e}"))?;
     // ancienne version : ses fichiers sont retirés une fois la nouvelle copiée
     // (profils et réglages conservés) ; installée ailleurs, elle ne reste pas orpheline
-    if let Some(old) = previous {
+    if let Some(old) = previous.filter(|p| crate::install_security::trusted(p)) {
         step("Retrait de l'ancienne version…");
         let moved = !eq_path(&old, &o.dir);
         for f in [APP_EXE, MAINTENANCE_EXE, "rJb.new", "uninstall.new"] {

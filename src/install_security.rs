@@ -50,9 +50,10 @@ pub fn checked_spelling(input: &str) -> Result<String, String> {
 mod platform {
     use super::*;
     use std::os::windows::fs::MetadataExt;
-    use windows_sys::Win32::Foundation::LocalFree;
+    use windows_sys::Win32::Foundation::{GetLastError, LocalFree, ERROR_ALREADY_EXISTS};
     use windows_sys::Win32::Security::Authorization::*;
     use windows_sys::Win32::Security::*;
+    use windows_sys::Win32::Storage::FileSystem::CreateDirectoryW;
 
     const REPARSE_POINT: u32 = 0x400;
     const PARENT_DANGER: u32 = 0x40 | 0x10000 | 0x40000 | 0x80000 | 0x10000000;
@@ -220,9 +221,7 @@ mod platform {
         Ok(())
     }
 
-    fn set_acl(path: &Path) -> Result<(), String> {
-        // Replace, rather than add grants to, the DACL. Set owner to Administrators
-        // so an unprivileged former owner cannot restore their own write access.
+    fn descriptor() -> Result<OwnedDescriptor, String> {
         let sddl = wide("O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)");
         let mut sd = std::ptr::null_mut();
         if unsafe {
@@ -236,7 +235,11 @@ mod platform {
         {
             return Err(PERMISSIONS_FAILED.into());
         }
-        let _guard = OwnedDescriptor(sd);
+        Ok(OwnedDescriptor(sd))
+    }
+    fn set_acl(path: &Path) -> Result<(), String> {
+        let guard = descriptor()?;
+        let sd = guard.0;
         let mut acl = std::ptr::null_mut();
         let mut owner = std::ptr::null_mut();
         let mut present = 0;
@@ -266,25 +269,50 @@ mod platform {
         }
         Ok(())
     }
+    // The protected descriptor is applied by Windows as part of exclusive
+    // creation. There is never an inherited-writable interval in which another
+    // user could retain a WRITE_DAC handle before we tighten permissions.
+    fn create_protected(path: &Path) -> Result<(), String> {
+        let guard = descriptor()?;
+        let attrs = SECURITY_ATTRIBUTES {
+            nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: guard.0,
+            bInheritHandle: 0,
+        };
+        let name = wide(&path.to_string_lossy());
+        if unsafe { CreateDirectoryW(name.as_ptr(), &attrs) } == 0 {
+            if unsafe { GetLastError() } != ERROR_ALREADY_EXISTS {
+                return Err(PERMISSIONS_FAILED.into());
+            }
+            // A concurrent creator may have won. Do not take over their object,
+            // even temporarily: previously opened handles would remain valid.
+        }
+        if !trusted(path) {
+            return Err(UNSAFE_DIRECTORY.into());
+        }
+        Ok(())
+    }
     pub fn prepare(path: &Path) -> Result<(), String> {
         let normalized = normalize(&path.to_string_lossy())?;
-        // Verify existing ancestors, before creating anything or replacing files.
-        let mut parent = normalized.parent().ok_or(UNSAFE_DIRECTORY)?;
-        while !parent.exists() {
-            parent = parent.parent().ok_or(UNSAFE_DIRECTORY)?;
+        let mut missing = Vec::new();
+        let mut ancestor = normalized.as_path();
+        while !ancestor.exists() {
+            missing.push(ancestor.to_path_buf());
+            ancestor = ancestor.parent().ok_or(UNSAFE_DIRECTORY)?;
         }
-        if !safe_parents(parent) {
+        if !safe_parents(ancestor) {
             return Err(UNSAFE_DIRECTORY.into());
         }
-        // Do not take over an existing writable directory: outstanding handles
-        // from its former users could otherwise retain mutation rights.
-        if normalized.exists() && !trusted(&normalized) {
+        if missing.is_empty() && !trusted(&normalized) {
             return Err(UNSAFE_DIRECTORY.into());
         }
-        std::fs::create_dir_all(&normalized).map_err(|_| PERMISSIONS_FAILED)?;
-        if !normalized.parent().is_some_and(safe_parents) {
-            return Err(UNSAFE_DIRECTORY.into());
+        for directory in missing.into_iter().rev() {
+            if !directory.parent().is_some_and(safe_parents) {
+                return Err(UNSAFE_DIRECTORY.into());
+            }
+            create_protected(&directory)?;
         }
+        // Only objects already proven protected can reach this adjustment.
         set_acl(&normalized)?;
         if !trusted(&normalized) {
             return Err(PERMISSIONS_FAILED.into());
@@ -342,6 +370,41 @@ mod platform {
                 .success());
             assert!(!trusted(&p));
             assert!(prepare(&p).is_err());
+            std::fs::remove_dir_all(p).unwrap();
+        }
+        #[test]
+        fn concurrent_untrusted_creator_is_never_taken_over() {
+            let p = root();
+            prepare(&p).unwrap();
+            let child = p.join("concurrent-winner");
+            std::fs::create_dir(&child).unwrap();
+            let command = std::env::var_os("SystemRoot")
+                .map(PathBuf::from)
+                .unwrap()
+                .join("System32/icacls.exe");
+            assert!(std::process::Command::new(command)
+                .arg(&child)
+                .args(["/grant", "*S-1-1-0:(OI)(CI)M", "/Q"])
+                .status()
+                .unwrap()
+                .success());
+            assert!(!trusted(&child));
+            // Simulate the competitor winning immediately before the atomic
+            // create operation. Its DACL must not be replaced by our descriptor.
+            assert!(create_protected(&child).is_err());
+            assert!(!trusted(&child));
+            assert!(prepare(&child).is_err());
+            assert_eq!(
+                super::super::preferred_directory(Some(child.clone()), child.clone()),
+                child.with_file_name("concurrent-winner-Secure")
+            );
+            let nested = p.join("nested").join("fresh");
+            prepare(&nested).unwrap();
+            assert!(trusted(&nested));
+            assert_eq!(
+                super::super::preferred_directory(Some(nested.clone()), p.join("unused")),
+                nested
+            );
             std::fs::remove_dir_all(p).unwrap();
         }
         #[test]
@@ -427,4 +490,21 @@ mod tests {
             r"C:\Program Files\Application"
         );
     }
+}
+
+/// Choose a protected existing installation, or a fresh protected sibling.
+pub fn preferred_directory(existing: Option<PathBuf>, default: PathBuf) -> PathBuf {
+    if let Some(path) = existing {
+        if trusted(&path) {
+            if let Ok(path) = normalize(&path.to_string_lossy()) {
+                return path;
+            }
+        }
+    }
+    if default.exists() && !trusted(&default) {
+        let mut name = default.file_name().unwrap_or_default().to_os_string();
+        name.push("-Secure");
+        return default.with_file_name(name);
+    }
+    default
 }
