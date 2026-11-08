@@ -322,6 +322,8 @@ mod platform {
     #[cfg(test)]
     mod windows_tests {
         use super::*;
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
         fn root() -> PathBuf {
             use windows_sys::Win32::System::Com::CoTaskMemFree;
             use windows_sys::Win32::UI::Shell::{FOLDERID_ProgramFiles, SHGetKnownFolderPath};
@@ -341,12 +343,13 @@ mod platform {
             }));
             unsafe { CoTaskMemFree(p.cast()) };
             path.join(format!(
-                "InstallPolicyTest-{}-{}",
+                "InstallPolicyTest-{}-{}-{}",
                 std::process::id(),
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
-                    .as_nanos()
+                    .as_nanos(),
+                NEXT_ROOT.fetch_add(1, Ordering::Relaxed)
             ))
         }
         #[test]
