@@ -114,9 +114,8 @@ pub fn normalize_dir(input: &str) -> Result<PathBuf, String> {
     if s.contains(['<', '>', '"', '|', '?', '*']) {
         return Err("Le chemin contient des caractères interdits.".into());
     }
-    let windir = std::env::var_os("SystemRoot")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| "C:\\Windows".into());
+    let windir = sys::windows_directory()
+        .ok_or_else(|| "Impossible de déterminer le dossier Windows.".to_string())?;
     if eq_path(&p, &windir) || under(&p, &windir) {
         return Err("Impossible d'installer dans le dossier de Windows.".into());
     }
@@ -127,6 +126,36 @@ pub fn normalize_dir(input: &str) -> Result<PathBuf, String> {
     } else {
         p
     })
+}
+
+fn app_installer_version(name: &str) -> Option<Vec<u32>> {
+    let remainder = name.strip_prefix("Microsoft.DesktopAppInstaller_")?;
+    let (version, package) = remainder.split_once('_')?;
+    if package != "x64__8wekyb3d8bbwe" {
+        return None;
+    }
+    version.split('.').map(str::parse).collect()
+}
+
+/// Retourne uniquement le winget de l'App Installer installé sous WindowsApps
+/// avec des ACL système protégées. Aucune recherche par PATH ou répertoire courant.
+pub fn winget_executable() -> Option<PathBuf> {
+    let root = sys::program_files().join("WindowsApps");
+    let entries = std::fs::read_dir(root).ok()?;
+    let mut candidates = Vec::new();
+    for entry in entries.flatten() {
+        let Some(version) = app_installer_version(&entry.file_name().to_string_lossy()) else {
+            continue;
+        };
+        let exe = entry.path().join("winget.exe");
+        if crate::install_security::trusted(&exe) {
+            candidates.push((version, exe));
+        }
+    }
+    candidates
+        .into_iter()
+        .max_by(|a, b| a.0.cmp(&b.0))
+        .map(|(_, p)| p)
 }
 
 // ── instance en cours ───────────────────────────────────────────────────
@@ -471,8 +500,23 @@ pub fn install(o: &Options, step: &dyn Fn(&str)) -> Result<Vec<String>, String> 
 
     if o.pawnio && !crate::drivers::pawnio::installed() {
         step("Installation du pilote PawnIO (RAM et carte mère)…");
-        let code = std::process::Command::new(sys::system_tool("cmd.exe"))
-            .args(["/C", "winget install --id namazso.PawnIO -e --silent --accept-package-agreements --accept-source-agreements"])
+        let Some(winget) = winget_executable() else {
+            notes.push(
+                "winget est introuvable dans un dossier protégé. Installez PawnIO depuis pawnio.eu."
+                    .into(),
+            );
+            return Ok(notes);
+        };
+        let code = std::process::Command::new(winget)
+            .args([
+                "install",
+                "--id",
+                "namazso.PawnIO",
+                "-e",
+                "--silent",
+                "--accept-package-agreements",
+                "--accept-source-agreements",
+            ])
             .creation_flags_hidden()
             .status()
             .ok()
@@ -556,11 +600,15 @@ pub fn uninstall(everything: bool, step: &dyn Fn(&str)) -> Result<(), String> {
     Ok(())
 }
 
+fn powershell_literal(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "''"))
+}
+
 /// Le programme de désinstallation ne peut pas s'effacer lui-même pendant
-/// qu'il tourne : une invite de commandes invisible s'en charge juste après sa
-/// fermeture. À appeler au moment de quitter.
+/// qu'il tourne : PowerShell supprime ses fichiers après sa fermeture. Les
+/// chemins sont des littéraux PowerShell échappés, jamais du code cmd.exe.
+/// À appeler au moment de quitter.
 pub fn finish_uninstall() {
-    use std::os::windows::process::CommandExt;
     let Some(maint) = std::env::current_exe().ok() else {
         return;
     };
@@ -571,14 +619,52 @@ pub fn finish_uninstall() {
     {
         return; // seulement depuis le programme de désinstallation installé
     }
+    let Some(powershell) = sys::system_tool("WindowsPowerShell\\v1.0\\powershell.exe") else {
+        return;
+    };
+    let Some(modules_dir) = powershell.parent().map(|p| p.join("Modules")) else {
+        return;
+    };
     let script = format!(
-        "ping -n 3 127.0.0.1 >nul & del /f /q \"{}\" & rmdir \"{}\"",
-        maint.display(),
-        dir.display()
+        "Microsoft.PowerShell.Utility\\Start-Sleep -Milliseconds 1500; Microsoft.PowerShell.Management\\Remove-Item -LiteralPath {} -Force -ErrorAction SilentlyContinue; Microsoft.PowerShell.Management\\Remove-Item -LiteralPath {} -Force -ErrorAction SilentlyContinue",
+        powershell_literal(&maint.to_string_lossy()),
+        powershell_literal(&dir.to_string_lossy())
     );
-    let _ = std::process::Command::new(sys::system_tool("cmd.exe"))
-        .raw_arg(format!("/C \"{script}\""))
-        .current_dir(sys::system_tool(""))
-        .creation_flags(0x0800_0000 | 0x0000_0008) // CREATE_NO_WINDOW | DETACHED_PROCESS
+    let _ = std::process::Command::new(powershell)
+        .args([
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-WindowStyle",
+            "Hidden",
+            "-Command",
+            &script,
+        ])
+        .env("PSModulePath", modules_dir)
         .spawn();
+}
+
+#[cfg(test)]
+mod uninstall_tests {
+    use super::{app_installer_version, powershell_literal};
+
+    #[test]
+    fn only_the_x64_desktop_app_installer_package_name_is_accepted() {
+        assert_eq!(
+            app_installer_version("Microsoft.DesktopAppInstaller_1.2.3.4_x64__8wekyb3d8bbwe"),
+            Some(vec![1, 2, 3, 4])
+        );
+        assert_eq!(
+            app_installer_version("Microsoft.DesktopAppInstaller_1.2.3.4_x86__8wekyb3d8bbwe"),
+            None
+        );
+    }
+
+    #[test]
+    fn uninstall_path_is_a_literal_even_with_shell_metacharacters() {
+        assert_eq!(
+            powershell_literal(r"C:\rJb\&^!'$(whoami)%PATH%"),
+            r"'C:\rJb\&^!''$(whoami)%PATH%'"
+        );
+    }
 }

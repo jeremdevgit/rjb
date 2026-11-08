@@ -31,17 +31,32 @@ fn from_w(p: *const u16) -> String {
 
 // ── outils système ──────────────────────────────────────────────────────
 
-/// Chemin complet d'un outil de System32 : jamais résolu par le PATH ni par
-/// le dossier courant, pour qu'un exécutable déposé à côté de rJb ne puisse
-/// pas se faire passer pour lui.
-pub fn system_tool(name: &str) -> PathBuf {
-    let root = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\Windows"));
-    root.join("System32").join(name)
+/// Lit un chemin Windows depuis l'API système, sans faire confiance à
+/// l'environnement hérité par le processus.
+fn windows_path(get: unsafe extern "system" fn(*mut u16, u32) -> u32) -> Option<PathBuf> {
+    let mut buffer = vec![0u16; 32_768];
+    let len = unsafe { get(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+    if len == 0 || len >= buffer.len() {
+        return None;
+    }
+    buffer.truncate(len);
+    String::from_utf16(&buffer).ok().map(PathBuf::from)
+}
+
+pub fn windows_directory() -> Option<PathBuf> {
+    windows_path(windows_sys::Win32::System::SystemInformation::GetWindowsDirectoryW)
+}
+
+/// Chemin complet d'un outil système, résolu par Windows : jamais par PATH,
+/// dossier courant ni variable d'environnement modifiable par l'appelant.
+pub fn system_tool(name: &str) -> Option<PathBuf> {
+    windows_path(windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW)
+        .map(|root| if name.is_empty() { root } else { root.join(name) })
 }
 
 /// Lance un outil sans fenêtre et attend son code de sortie.
 pub fn run_hidden(tool: &str, args: &[&str]) -> Option<i32> {
-    std::process::Command::new(system_tool(tool))
+    std::process::Command::new(system_tool(tool)?)
         .args(args)
         .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
         .stdout(std::process::Stdio::null())
@@ -93,8 +108,24 @@ pub fn shell_open(target: &str) {
 /// en administrateur : explorer.exe confie l'adresse à la session ouverte, et
 /// le navigateur ne démarre donc jamais en administrateur.
 pub fn open_as_user(url: &str) {
-    let root = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\Windows"));
-    let _ = std::process::Command::new(root.join("explorer.exe")).raw_arg(format!("\"{url}\"")).spawn();
+    let Some(explorer) = windows_directory().map(|root| root.join("explorer.exe")) else {
+        return;
+    };
+    let _ = std::process::Command::new(explorer).raw_arg(format!("\"{url}\"")).spawn();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn system_tool_uses_the_windows_reported_system_directory() {
+        let tool = system_tool("cmd.exe").expect("Windows must report its system directory");
+        let system = windows_path(windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW)
+            .expect("Windows must report its system directory");
+        assert_eq!(tool, system.join("cmd.exe"));
+        assert!(tool.ends_with("cmd.exe"));
+    }
 }
 
 pub fn message(title: &str, text: &str, error: bool) {

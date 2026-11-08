@@ -1,5 +1,14 @@
 # Historique des versions
 
+## 1.2.2 — 2026-11-08 — Sécurité / Security
+
+- Les chemins des exécutables système et le dossier Windows sont résolus par les API Windows, sans dépendre de `SystemRoot` transmis au processus.
+- System executables and the Windows directory are resolved through Windows APIs instead of trusting the process's inherited `SystemRoot`.
+- `winget` est résolu dans le paquet App Installer protégé, sans interpréteur de commandes ni recherche par `PATH`; la suppression différée utilise des littéraux PowerShell échappés.
+- Resolve `winget` inside the protected App Installer package without a command interpreter or `PATH` search; deferred self-removal uses escaped PowerShell literals.
+- Ajout de contrôles ciblés pour les chemins système, la sélection du paquet App Installer et l'échappement des chemins de désinstallation. Les vidages HID sont limités à 64 rapports.
+- Add focused checks for system paths, App Installer package selection and uninstall-path escaping. HID response draining is capped at 64 reports.
+
 ## 1.2.1 — 2026-11-07 — Sécurité / Security
 
 - Création atomique des dossiers avec propriétaire/DACL protégés dès l'origine ; refus d'une création concurrente non fiable. Migration par défaut vers un emplacement protégé, sans suivre les anciens dossiers non fiables ; rJb désactive l'ancien démarrage élevé avant migration.

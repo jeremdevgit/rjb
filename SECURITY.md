@@ -15,7 +15,7 @@ Only the latest release (*Releases* page) receives fixes.
 
 ## What the software guarantees
 
-- No network connection, no telemetry.
+- No network connection or telemetry during normal operation. The optional PawnIO installation, when selected by the user, downloads the package through winget.
 - Automatic launch as administrator only from a folder that only administrators can modify (otherwise another program could replace rJb.exe to gain those rights).
 - System libraries loaded from System32 only.
 
@@ -43,7 +43,7 @@ Seule la dernière version publiée (page *Releases*) reçoit des correctifs.
 
 ## Ce que garantit le logiciel
 
-- Aucune connexion réseau ni télémétrie.
+- Aucune connexion réseau ni télémétrie pendant l'utilisation normale. L'installation facultative de PawnIO, si l'utilisateur la choisit, télécharge le paquet avec winget.
 - Lancement automatique en administrateur uniquement depuis un dossier modifiable par les seuls administrateurs (sinon un autre programme pourrait remplacer rJb.exe pour obtenir ces droits).
 - Bibliothèques système chargées depuis System32 uniquement.
 

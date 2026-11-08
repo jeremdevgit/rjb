@@ -13,6 +13,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+const MAX_PENDING_REPORTS: usize = 64;
+
 /// Appareils Logitech qui répondent mais n'ont aucun éclairage RGB
 /// (PRO X SUPERLIGHT 2, G305…) : emplacement → nom, pour les signaler.
 static NO_LIGHT: Mutex<Vec<(String, String)>> = Mutex::new(Vec::new());
@@ -155,7 +157,11 @@ impl Link {
 
     fn drain(&self) {
         let mut b = [0u8; 64];
-        while matches!(self.dev.read_timeout(&mut b, 0), Ok(n) if n > 0) {}
+        for _ in 0..MAX_PENDING_REPORTS {
+            if !matches!(self.dev.read_timeout(&mut b, 0), Ok(n) if n > 0) {
+                break;
+            }
+        }
     }
 }
 

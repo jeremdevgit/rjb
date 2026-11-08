@@ -1454,19 +1454,22 @@ ou retirez-lui la priorité, sinon Windows reprend la main sur les claviers et s
     ),
 ];
 
-/// Installe le pilote PawnIO via winget (fenêtre visible, l'utilisateur valide l'UAC).
+/// Installe PawnIO avec le winget protégé de l'App Installer.
 fn install_pawnio() {
-    let _ = std::process::Command::new(crate::sys::system_tool("cmd.exe"))
-        .args([
-            "/C",
-            format!(
-                "winget install --id namazso.PawnIO -e --accept-package-agreements --accept-source-agreements & echo. & echo {} & pause",
-                // la console n'affiche correctement que l'ASCII
-                if crate::langue::code() == "fr" { "Relancez rJb une fois l'installation terminee." } else { "Restart rJb once the installation is complete." }
-            )
-            .as_str(),
-        ])
-        .spawn();
+    if let Some(winget) = crate::install::winget_executable() {
+        let _ = std::process::Command::new(winget)
+            .args([
+                "install",
+                "--id",
+                "namazso.PawnIO",
+                "-e",
+                "--accept-package-agreements",
+                "--accept-source-agreements",
+            ])
+            .spawn();
+    } else {
+        crate::sys::open_as_user("https://pawnio.eu");
+    }
 }
 
 /// Complète la liste des effets pour qu'il y en ait un par zone.
