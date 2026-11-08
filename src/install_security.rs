@@ -423,8 +423,10 @@ mod platform {
         fn junction_ancestor_rejected() {
             let p = root();
             prepare(&p).unwrap();
-            let target = p.join("target");
-            std::fs::create_dir(&target).unwrap();
+            let target = std::env::var_os("SystemRoot")
+                .map(PathBuf::from)
+                .unwrap()
+                .join("System32");
             let junction = p.join("link");
             let command = std::env::var_os("SystemRoot")
                 .map(PathBuf::from)
