@@ -134,7 +134,11 @@ fn app_installer_version(name: &str) -> Option<Vec<u32>> {
     if package != "x64__8wekyb3d8bbwe" {
         return None;
     }
-    version.split('.').map(str::parse).collect()
+    version
+        .split('.')
+        .map(str::parse::<u32>)
+        .collect::<Result<Vec<_>, _>>()
+        .ok()
 }
 
 /// Retourne uniquement le winget de l'App Installer installé sous WindowsApps
