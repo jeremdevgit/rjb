@@ -382,7 +382,7 @@ mod platform {
                 .map(PathBuf::from)
                 .unwrap()
                 .join("System32/icacls.exe");
-            assert!(std::process::Command::new(command)
+            assert!(std::process::Command::new(&command)
                 .arg(&child)
                 .args(["/grant", "*S-1-1-0:(OI)(CI)M", "/Q"])
                 .status()
@@ -410,7 +410,7 @@ mod platform {
             );
             // Restore the hostile fixture's inherited protected ACL so the
             // test runner can remove its temporary root during cleanup.
-            assert!(std::process::Command::new(command)
+            assert!(std::process::Command::new(&command)
                 .arg(&child)
                 .args(["/reset", "/Q"])
                 .status()
