@@ -408,6 +408,14 @@ mod platform {
                 super::super::preferred_directory(Some(nested.clone()), p.join("unused")),
                 nested
             );
+            // Restore the hostile fixture's inherited protected ACL so the
+            // test runner can remove its temporary root during cleanup.
+            assert!(std::process::Command::new(command)
+                .arg(&child)
+                .args(["/reset", "/Q"])
+                .status()
+                .unwrap()
+                .success());
             std::fs::remove_dir_all(p).unwrap();
             std::fs::remove_dir_all(nested_root).unwrap();
         }
