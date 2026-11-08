@@ -12,6 +12,7 @@ use hidapi::{DeviceInfo as HidInfo, HidApi, HidDevice};
 use std::time::Duration;
 
 const VID: u16 = 0x1B1C;
+const MAX_PENDING_REPORTS: usize = 64;
 const PIDS: &[u16] = &[
     0x1BA4, 0x1B6E, 0x1BA0, 0x1B8D, 0x1BAD, 0x1BC7, 0x1BED, 0x1BFD, 0x2B01, 0x1BC4, 0x1BB3, 0x1B73, 0x1BB9, 0x1B89,
     0x1B7C, 0x1BC5, 0x1B7D, 0x1B4B, 0x1B7E, 0x1B5E, 0x1B4C, 0x2B32, 0x2B00, 0x1B93, 0x1BBA, 0x1BAC, 0x1B70, 0x1B9E,
@@ -188,7 +189,11 @@ impl CorsairV2 {
     fn send_block(&self, data: &[u8]) -> Result<()> {
         // purge des réponses en attente
         let mut tmp = [0u8; 65];
-        while !self.skip_reads && matches!(self.dev.read_timeout(&mut tmp, 3), Ok(n) if n > 0) {}
+        for _ in 0..MAX_PENDING_REPORTS {
+            if self.skip_reads || !matches!(self.dev.read_timeout(&mut tmp, 3), Ok(n) if n > 0) {
+                break;
+            }
+        }
         self.start()?;
         let mut b = self.packet(0x06, &[]);
         b[4] = data.len() as u8;

@@ -40,6 +40,9 @@ jobs:
       - name: Tests de sécurité de l'installation (données temporaires)
         run: cargo test --locked --manifest-path tests/install-security/Cargo.toml
 
+      - name: Tests Windows (ACL, chemins système, désinstallation)
+        run: cargo test --locked --target x86_64-pc-windows-msvc
+
       - name: Compilation et contrôles (chemins, identifiants, Runtime Visual C++)
         run: ./tools/release.ps1 -Out dist -Ci
 
