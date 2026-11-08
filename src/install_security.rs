@@ -398,7 +398,10 @@ mod platform {
                 super::super::preferred_directory(Some(child.clone()), child.clone()),
                 child.with_file_name("concurrent-winner-Secure")
             );
-            let nested = p.join("nested").join("fresh");
+            // Keep the positive nested-creation control independent from the
+            // intentionally attacker-writable sibling above.
+            let nested_root = root();
+            let nested = nested_root.join("nested").join("fresh");
             prepare(&nested).unwrap();
             assert!(trusted(&nested));
             assert_eq!(
@@ -406,6 +409,7 @@ mod platform {
                 nested
             );
             std::fs::remove_dir_all(p).unwrap();
+            std::fs::remove_dir_all(nested_root).unwrap();
         }
         #[test]
         fn junction_ancestor_rejected() {
