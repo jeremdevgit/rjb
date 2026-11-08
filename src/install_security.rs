@@ -362,7 +362,7 @@ mod platform {
                 .map(PathBuf::from)
                 .unwrap()
                 .join("System32/icacls.exe");
-            assert!(std::process::Command::new(command)
+            assert!(std::process::Command::new(&command)
                 .arg(&p)
                 .args(["/grant", "*S-1-1-0:(OI)(CI)M", "/Q"])
                 .status()
