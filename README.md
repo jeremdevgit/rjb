@@ -85,12 +85,15 @@ Device protocols come from the work of the [OpenRGB](https://gitlab.com/CalcProg
 
 All free, open source and ad-free — [github.com/jeremdevgit](https://github.com/jeremdevgit):
 
-| Software | For | In short |
+| Software | Platform | In short |
 |---|---|---|
-| [Carnet de notes](https://github.com/jeremdevgit/carnet-rust) | Windows | encrypted local notes and experimental Joplin/Nextcloud sync · [download ZIP](https://github.com/jeremdevgit/carnet-rust/releases/latest) |
-| [JMeca](https://github.com/jeremdevgit/jmeca) | Windows, macOS, Linux | encrypted vehicle maintenance, client folders, service log and fuel tracking |
-| [Boîte à outils](https://github.com/jeremdevgit/boite-a-outils) | Windows, macOS | maintenance, cleanup and hidden settings |
+| [AutoDex](https://github.com/jeremdevgit/autodex) | Windows, macOS, Linux | Car collection game with on-device photo recognition |
+| [Boîte à outils](https://github.com/jeremdevgit/boite-a-outils) | Windows, macOS | Computer maintenance, cleanup and file search |
+| [Carnet de notes](https://github.com/jeremdevgit/carnet-rust) | Windows | Encrypted notebooks and experimental sync |
+| [Decklight](https://github.com/jeremdevgit/decklight) | Windows, macOS, Linux | Virtual Stream Deck with USB control |
+| [JMeca](https://github.com/jeremdevgit/jmeca) | Windows, macOS, Linux | Encrypted vehicle maintenance tracker |
+| [LJ Hub](https://github.com/jeremdevgit/lj-hub) | Windows, macOS, Linux | Logitech device profile manager |
 | [Pomme](https://github.com/jeremdevgit/pomme) | Windows | Apple Music and local music player |
-| [Ludothèque](https://github.com/jeremdevgit/ludotheque) | macOS | all your games in one launcher |
-| [Suite Libre](https://jeremdevgit.github.io/suite-libre/) | browser | six tools, no account: QR codes, blur, photos, conversions, averages, passwords |
-| [Batailles de France](https://github.com/jeremdevgit/batailles-de-france) | browser | real-time strategy game on the maps of five French cities |
+| [Ludothèque](https://github.com/jeremdevgit/ludotheque) | macOS | Game library and launcher |
+| [Suite Libre](https://jeremdevgit.github.io/suite-libre/) | Browser | Six tools without an account |
+| [Batailles de France](https://github.com/jeremdevgit/batailles-de-france) | Browser | Real-time strategy game |
