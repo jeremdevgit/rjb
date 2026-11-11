@@ -219,7 +219,7 @@ pub(crate) fn setup_style(ctx: &egui::Context) {
     }
     v.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32,DIM);
     ctx.set_visuals(v);
-    ctx.style_mut(|s| {
+    ctx.all_styles_mut(|s| {
         s.spacing.item_spacing = vec2(8.0, 8.0);
         s.spacing.button_padding = vec2(12.0, 6.0);
         s.spacing.slider_width = 260.0;
@@ -631,7 +631,8 @@ impl eframe::App for App {
         }
     }
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         for a in take_actions() {
             match a {
                 Action::Open => {
@@ -654,7 +655,7 @@ impl eframe::App for App {
 
         egui::CentralPanel::default()
             .frame(Frame::NONE.inner_margin(Margin::same(14)))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 self.background(ui);
                 self.top_bar(ui, &mut reload);
                 ui.add_space(10.0);
@@ -708,7 +709,7 @@ impl eframe::App for App {
 
 impl App {
     fn background(&self, ui: &mut Ui) {
-        let r = ui.ctx().screen_rect();
+        let r = ui.ctx().content_rect();
         let p = ui.ctx().layer_painter(egui::LayerId::background());
         if self.glass {
             p.rect_filled(r, CornerRadius::ZERO, Color32::from_rgba_unmultiplied(10, 11, 20, 150));

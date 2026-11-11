@@ -256,7 +256,7 @@ fn note(ui: &mut Ui, t: &str) {
 
 impl SetupApp {
     fn background(&self, ui: &Ui) {
-        let r = ui.ctx().screen_rect();
+        let r = ui.ctx().content_rect();
         let p = ui.ctx().layer_painter(egui::LayerId::background());
         // fond plus opaque que l'application : du texte à lire, pas des couleurs à montrer
         let base = if self.glass { Color32::from_rgba_unmultiplied(10, 11, 20, 200) } else { Color32::from_rgb(13, 15, 26) };
@@ -536,17 +536,18 @@ impl eframe::App for SetupApp {
         }
     }
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         // pendant le travail, on ne permet pas de fermer la fenêtre au milieu
         if matches!(self.page, Page::Working(_)) && ctx.input(|i| i.viewport().close_requested()) {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         // boutons toujours visibles en bas ; le contenu défile si la fenêtre
         // est plus petite que prévu (mise à l'échelle Windows élevée)
-        egui::TopBottomPanel::bottom("actions")
+        egui::Panel::bottom("actions")
             .frame(Frame::NONE.inner_margin(Margin { left: 22, right: 22, top: 10, bottom: 18 }))
             .show_separator_line(false)
-            .show(ctx, |ui| match self.page {
+            .show(ui, |ui| match self.page {
                 Page::Choose => match self.mode {
                     Mode::Setup => self.setup_actions(ui, ctx),
                     Mode::Maintenance => self.maintenance_actions(ui, ctx),
@@ -554,7 +555,7 @@ impl eframe::App for SetupApp {
                 Page::Working(_) => {}
                 Page::Done(t) => self.done_actions(ui, ctx, t),
             });
-        egui::CentralPanel::default().frame(Frame::NONE.inner_margin(Margin { left: 22, right: 22, top: 20, bottom: 0 })).show(ctx, |ui| {
+        egui::CentralPanel::default().frame(Frame::NONE.inner_margin(Margin { left: 22, right: 22, top: 20, bottom: 0 })).show(ui, |ui| {
             self.background(ui);
             self.header(ui);
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| match self.page {
