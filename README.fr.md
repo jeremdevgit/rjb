@@ -1,99 +1,89 @@
-<p align="center"><img src="captures/icone.png" width="96" alt=""></p>
+<p align="center"><img src="captures/icone.png" width="112" alt=""></p>
 
-# rJb
+<h1 align="center">rJb</h1>
 
-[English](README.md) · **Français** · [Español](README.es.md)
+<p align="center"><b>L'éclairage RVB de tous vos périphériques et composants dans une seule application légère.</b></p>
 
-**L'éclairage RGB de tous tes périphériques et composants dans une seule application légère pour Windows.** Claviers, souris, casques, tapis, mémoire vive, carte mère, carte graphique, ventilateurs et bandeaux : un seul effet synchronisé, sans les logiciels lourds de chaque fabricant.
+<p align="center"><img src="https://img.shields.io/badge/%F0%9F%9B%A0%EF%B8%8F%20System%20%26%20hardware-Windows-2f6fde?style=flat-square" alt="Système et matériel"> <a href="https://github.com/jeremdevgit/rjb/releases"><img src="https://img.shields.io/github/v/release/jeremdevgit/rjb?include_prereleases&style=flat-square&label=version" alt="version"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-555?style=flat-square" alt="GPL-2.0-or-later"></a> <a href="https://github.com/jeremdevgit/rjb/actions/workflows/windows.yml"><img src="https://github.com/jeremdevgit/rjb/actions/workflows/windows.yml/badge.svg" alt="CI"></a></p>
 
-**8 langues** : français, anglais, espagnol, allemand, italien, portugais, chinois et japonais. La langue de Windows est choisie automatiquement ; *Réglages › Langue* permet d'en changer (immédiatement, sans relancer).
+<p align="center"><a href="README.md">English</a> · <b>Français</b> · <a href="README.es.md">Español</a> · <a href="README.de.md">Deutsch</a> · <a href="README.it.md">Italiano</a> · <a href="README.pt.md">Português</a> · <a href="README.zh.md">简体中文</a> · <a href="README.ja.md">日本語</a></p>
 
-👉 **[Télécharger rJb pour Windows](https://github.com/jeremdevgit/rjb/releases/latest)** (`rJb-Setup.exe`)
+<p align="center"><a href="https://github.com/jeremdevgit/rjb/releases/latest"><b>⬇ Télécharger</b></a></p>
 
 ![Un clavier en vague arc-en-ciel](captures/clavier.jpg)
 
+Claviers, souris, casques, tapis, mémoire vive, carte mère, carte graphique, ventilateurs et bandeaux LED : **un seul effet synchronisé, sans les logiciels lourds de chaque fabricant.**
+
 <p><img src="captures/tous-les-appareils.jpg" alt="Tous les appareils synchronisés" width="49%"> <img src="captures/carte-mere.jpg" alt="Carte mère et connecteur ARGB" width="49%"></p>
-<p><img src="captures/reglages.jpg" alt="Réglages : à propos et mes autres logiciels" width="49%"></p>
 
-*Captures réalisées avec des appareils de démonstration : vraie interface et vrai moteur d'effets, sans matériel branché.*
+*Captures réalisées avec des appareils de démonstration, la vraie interface et le vrai moteur d'effets.*
 
-## Appareils pris en charge
+## En bref
+
+| | |
+|---|---|
+| **Catégorie** | 🛠️ Système et matériel |
+| **Plateformes** | Windows |
+| **Interface** | 8 langues (EN, FR, ES, DE, IT, PT, ZH, JA) |
+| **Prix** | Gratuit, open source, sans publicité ni télémétrie |
+| **État** | Stable |
+| **Licence** | [GPL-2.0-or-later](LICENSE) |
+
+## Ce qu'il fait
+
+- **12 effets synchronisés** : couleur fixe, respiration, cycle de couleurs, vague arc-en-ciel, vague de couleur, dégradé, comète, scintillement, stroboscope, feu, aurore et édition LED par LED ; luminosité globale, appareils ignorés.
+- **Profils**, lancement à l'ouverture de session (avec les droits nécessaires pour la RAM et la carte mère), icône dans la zone de notification.
+- **Détection des conflits** : prévient quand G HUB, iCUE, Synapse, Armoury Crate, SignalRGB ou OpenRGB se disputent les mêmes appareils.
+
+## Matériel pris en charge
 
 | Famille | Exemples |
 |---|---|
-| Claviers, souris, casques, tapis | Logitech, Corsair, Razer, SteelSeries, HyperX, Wooting, appareils « Dynamic Lighting » / LampArray de Windows |
+| Claviers, souris, casques, tapis | Logitech, Corsair, Razer, SteelSeries, HyperX, Wooting, éclairage dynamique Windows (LampArray) |
 | Mémoire vive | Corsair, Kingston Fury, HyperX, Crucial Ballistix, G.Skill et autres modules ENE / SPD |
 | Cartes mères et contrôleurs | ASUS Aura (USB), MSI Mystic Light, Gigabyte RGB Fusion 2, ASRock Polychrome, Corsair Commander Core / Lighting Node / Hydro Platinum, NZXT Hue 2, Lian Li |
-| Cartes graphiques | NVIDIA (via le pilote NVIDIA) et contrôleurs des fabricants de cartes |
+| Cartes graphiques | NVIDIA (via le pilote) et contrôleurs des fabricants de cartes |
 
-La mémoire et la carte mère passent par le bus SMBus, grâce au pilote signé et libre **PawnIO** (le même qu'OpenRGB et FanControl), installé en option par l'installateur. Sans lui, seuls les appareils USB sont pilotés.
-
-## Fonctionnalités
-
-- 12 effets synchronisés sur tous les appareils : couleur fixe, respiration, cycle de couleurs, vague arc-en-ciel, vague de couleurs, dégradé, comète, scintillement, stroboscope, feu, aurore, et réglage LED par LED ; luminosité globale, appareils ignorés.
-- Profils, lancement au démarrage (avec les droits nécessaires pour la RAM et la carte mère), zone de notification.
-- Détection des logiciels concurrents (G HUB, iCUE, Synapse, Armoury Crate, SignalRGB, OpenRGB…) qui se disputent les mêmes appareils.
+La RAM et la carte mère passent par le bus SMBus grâce au pilote libre et signé **PawnIO** (le même qu'OpenRGB et FanControl), proposé par l'installateur. Sans lui, seuls les appareils USB sont pilotés.
 
 ## Installer
 
-1. Télécharge `rJb-Setup.exe` dans les [Releases](https://github.com/jeremdevgit/rjb/releases/latest) et lance-le.
-2. **Une version déjà installée est remplacée automatiquement** (fichiers de l'ancienne version retirés, y compris si elle était dans un autre dossier) ; profils et réglages conservés.
-3. rJb s'installe dans *Program Files* : la tâche qui le lance en administrateur à l'ouverture de session n'est créée que dans un dossier que seuls les administrateurs peuvent modifier.
+1. Téléchargez `rJb-Setup.exe` depuis la [dernière version](https://github.com/jeremdevgit/rjb/releases/latest) et lancez-le.
+2. Une version installée est remplacée automatiquement ; profils et réglages sont conservés.
+3. rJb s'installe dans *Program Files* : la tâche lancée en administrateur à l'ouverture de session pointe vers un dossier modifiable seulement par les administrateurs.
 
-L'exécutable n'est pas signé par un certificat payant : si Windows SmartScreen affiche « Windows a protégé votre ordinateur », clique sur **Informations complémentaires** puis **Exécuter quand même**. Pour vérifier le fichier : `Get-FileHash .\rJb-Setup.exe` et compare avec `SHA256SUMS.txt`.
+Pas de certificat payant : si SmartScreen s'affiche, choisissez **Informations complémentaires › Exécuter quand même**. Vérifiez avec `Get-FileHash .\rJb-Setup.exe` et `SHA256SUMS.txt`.
 
-## Vie privée et sécurité
+## Sécurité et confidentialité
 
-- **Aucune connexion réseau** (hormis l'installation optionnelle de PawnIO par winget et les liens ouverts dans ton navigateur), aucune télémétrie.
-- Accès au bus SMBus partagé avec les autres logiciels par le verrou système habituel ; écritures limitées aux adresses des contrôleurs reconnus.
-- Liens externes ouverts avec les droits de l'utilisateur, jamais en administrateur.
-
-Une faille ? Merci de lire [SECURITY.md](SECURITY.md).
+- **Aucune connexion réseau** (hors installation facultative de PawnIO via winget et liens que vous ouvrez), aucune télémétrie.
+- L'accès SMBus partage le verrou système habituel avec les autres logiciels ; les écritures sont limitées aux adresses des contrôleurs reconnus.
+- Les liens externes s'ouvrent avec vos droits, jamais en administrateur.
 
 ## Compiler
 
-Prérequis : [Rust](https://rustup.rs) stable et les *Build Tools* de Visual Studio (« Développement Desktop en C++ »).
-
 ```powershell
-cargo build --release          # target\release\rJb.exe (renommé rJb-Setup.exe, il installe)
-.\tools\release.ps1            # dist\rJb-Setup.exe + contrôles
+# Rust stable + Visual Studio Build Tools (C++)
+cargo build --release        # target\release\rJb.exe
+.\tools\release.ps1          # dist\rJb-Setup.exe + vérifications
 ```
 
-Les versions publiées sont construites par GitHub Actions ([`.github/workflows/windows.yml`](.github/workflows/windows.yml)).
-
-## Traductions
-
-Les textes sont dans [`src/textes.rs`](src/textes.rs) : une ligne par texte, le français servant de clé, suivi des sept traductions. L'anglais sert de repli quand la langue de Windows n'est pas proposée. Pour le chinois et le japonais, la police de Windows correspondante est chargée (Microsoft YaHei, Yu Gothic…).
-
-## Structure du dépôt
-
-```
-src/drivers/   un pilote par famille d'appareils (HID, SMBus, NVAPI…)
-src/           moteur d'effets, configuration, interface (egui), installateur
-assets/pawnio/ modules compilés du pilote PawnIO (accès SMBus)
-tools/         construction de la version distribuée
-licences-tiers/ licences des composants tiers
-```
+Les textes sont dans [`src/textes.rs`](src/textes.rs) (clé française + sept traductions). Les versions sont construites par GitHub Actions ([`windows.yml`](.github/workflows/windows.yml)).
 
 ## Licence
 
-Code sous licence **GNU GPL v2 ou ultérieure** — voir [LICENSE](LICENSE). Copyright © 2026 jeremdevgit.
+GNU GPL v2 ou ultérieure — voir [LICENSE](LICENSE). Les protocoles des appareils viennent de la communauté [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB) (GPL-2.0-or-later) ; les modules [PawnIO](https://github.com/namazso/PawnIO.Modules) inclus sont sous LGPL-2.1 ([`licences-tiers/`](licences-tiers/)). Les marques citées appartiennent à leurs propriétaires ; rJb n'est affilié à aucun fabricant.
 
-Les protocoles des appareils sont issus du travail de la communauté [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB) (GPL-2.0-or-later), d'où la licence de rJb. Les modules [PawnIO](https://github.com/namazso/PawnIO.Modules) inclus sont sous licence LGPL-2.1 (dossier [licences-tiers](licences-tiers/)). Les marques citées appartiennent à leurs propriétaires ; rJb n'est affilié à aucun fabricant.
+---
 
-## Mes autres logiciels
+Une faille de sécurité ? Signalez-la en privé (voir [SECURITY.md](SECURITY.md)) plutôt que dans un ticket public.
 
-Tous libres, gratuits et sans publicité — [github.com/jeremdevgit](https://github.com/jeremdevgit) :
+## Mes autres logiciels libres
 
-| Logiciel | Plateforme | En bref |
-|---|---|---|
-| [AutoDex](https://github.com/jeremdevgit/autodex) | Windows, macOS, Linux | Jeu de collection de voitures avec reconnaissance de photos sur l'appareil |
-| [Boîte à outils](https://github.com/jeremdevgit/boite-a-outils) | Windows, macOS | Entretien de l'ordinateur, nettoyage et recherche de fichiers |
-| [Carnet de notes](https://github.com/jeremdevgit/carnet-rust) | Windows | Carnets chiffrés et synchronisation expérimentale |
-| [Decklight](https://github.com/jeremdevgit/decklight) | Windows, macOS, Linux | Stream Deck virtuel avec contrôle USB |
-| [JMeca](https://github.com/jeremdevgit/jmeca) | Windows, macOS, Linux | Suivi d'entretien de véhicules chiffré |
-| [LJ Hub](https://github.com/jeremdevgit/lj-hub) | Windows, macOS, Linux | Gestionnaire de profils pour appareils Logitech |
-| [Pomme](https://github.com/jeremdevgit/pomme) | Windows | Lecteur de musique Apple Music et fichiers locaux |
-| [Ludothèque](https://github.com/jeremdevgit/ludotheque) | macOS | Bibliothèque et lanceur de jeux |
-| [Suite Libre](https://jeremdevgit.github.io/suite-libre/) | Navigateur | Six outils sans compte |
-| [Batailles de France](https://github.com/jeremdevgit/batailles-de-france) | Navigateur | Jeu de stratégie en temps réel |
+Tous gratuits, open source et sans publicité.
+
+**🛠️ Système et matériel** — [Boîte à outils](https://github.com/jeremdevgit/boite-a-outils) · [LJ Hub](https://github.com/jeremdevgit/lj-hub) · [Decklight](https://github.com/jeremdevgit/decklight)
+
+**📒 Productivité et données** — [Carnet de notes](https://github.com/jeremdevgit/carnet-rust) · [JMeca](https://github.com/jeremdevgit/jmeca) · [Suite Libre](https://jeremdevgit.github.io/suite-libre/)
+
+**🎮 Musique et jeux** — [Pomme](https://github.com/jeremdevgit/pomme) · [Ludothèque](https://github.com/jeremdevgit/ludotheque) · [AutoDex](https://github.com/jeremdevgit/autodex) · [Batailles de France](https://github.com/jeremdevgit/batailles-de-france)
